@@ -1,0 +1,47 @@
+name: Deploy to ECS
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Build with Maven
+      run: mvn clean package -DskipTests -q
+    
+    - name: Deploy to ECS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.ECS_HOST }}
+        username: root
+        key: ${{ secrets.ECS_SSH_KEY }}
+        port: 22
+        script: |
+          # 创建应用目录
+          mkdir -p /opt/app/litelog-backend
+          
+          # 停止旧服务
+          killall java 2>/dev/null || true
+          sleep 2
+          
+          # 复制新JAR包
+          scp -o StrictHostKeyChecking=no target/*.jar root@${{ secrets.ECS_HOST }}:/opt/app/litelog-backend/
+          
+          # 启动新服务
+          cd /opt/app/litelog-backend
+          nohup java -jar *.jar > /opt/app/litelog-backend/app.log 2>&1 &
+          
+          echo "Deployment completed successfully!"

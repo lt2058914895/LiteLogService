@@ -12,7 +12,9 @@ public class SmsService {
 
     private final Map<String, String> smsCodeCache = new ConcurrentHashMap<>();
     private final Map<String, Long> smsSendTimeCache = new ConcurrentHashMap<>();
-    private static final long SMS_INTERVAL_MS = 60000;
+    
+    private static final long SMS_INTERVAL_MS = 60000;   // 60秒发送间隔
+    private static final long SMS_EXPIRE_MS = 300000;    // 5分钟过期时间
 
     public boolean sendSMSCode(String phone, String type) {
         Long lastSendTime = smsSendTimeCache.get(phone);
@@ -32,7 +34,18 @@ public class SmsService {
 
     public boolean verifyCode(String phone, String code) {
         String cachedCode = smsCodeCache.get(phone);
-        if (cachedCode == null) {
+        Long sendTime = smsSendTimeCache.get(phone);
+        
+        if (cachedCode == null || sendTime == null) {
+            log.warn("验证码不存在: {}", phone);
+            return false;
+        }
+
+        // 检查验证码是否过期
+        if (System.currentTimeMillis() - sendTime > SMS_EXPIRE_MS) {
+            smsCodeCache.remove(phone);
+            smsSendTimeCache.remove(phone);
+            log.warn("验证码已过期: {}", phone);
             return false;
         }
 
@@ -40,6 +53,10 @@ public class SmsService {
         
         if (valid) {
             smsCodeCache.remove(phone);
+            smsSendTimeCache.remove(phone);
+            log.info("验证码验证成功: {}", phone);
+        } else {
+            log.warn("验证码验证失败: {}", phone);
         }
 
         return valid;

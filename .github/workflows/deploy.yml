@@ -22,6 +22,16 @@ jobs:
     - name: Build with Maven
       run: mvn clean package -DskipTests -q
     
+    - name: Copy JAR to ECS
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.ECS_HOST }}
+        username: root
+        key: ${{ secrets.ECS_SSH_KEY }}
+        port: 22
+        source: "target/*.jar"
+        target: "/opt/app/litelog-backend/"
+    
     - name: Deploy to ECS
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -30,18 +40,29 @@ jobs:
         key: ${{ secrets.ECS_SSH_KEY }}
         port: 22
         script: |
-          # 创建应用目录
+          # 创建应用目录（确保存在）
           mkdir -p /opt/app/litelog-backend
           
-          # 停止旧服务
-          killall java 2>/dev/null || true
-          sleep 2
-          
-          # 复制新JAR包
-          scp -o StrictHostKeyChecking=no target/*.jar root@${{ secrets.ECS_HOST }}:/opt/app/litelog-backend/
+          # 停止旧服务（如果运行中）
+          if pgrep -f "java.*litelog" > /dev/null; then
+              echo "Stopping existing service..."
+              pkill -f "java.*litelog"
+              sleep 3
+          fi
           
           # 启动新服务
+          echo "Starting new service..."
           cd /opt/app/litelog-backend
-          nohup java -jar *.jar > /opt/app/litelog-backend/app.log 2>&1 &
+          nohup java -jar *.jar > app.log 2>&1 &
           
-          echo "Deployment completed successfully!"
+          # 等待服务启动
+          sleep 5
+          
+          # 验证服务是否启动成功
+          if pgrep -f "java.*litelog" > /dev/null; then
+              echo "✅ Deployment completed successfully!"
+          else
+              echo "❌ Service failed to start. Check logs:"
+              tail -20 /opt/app/litelog-backend/app.log
+              exit 1
+          fi

@@ -48,19 +48,6 @@ jobs:
         source: "target/*.jar"
         target: "/opt/app/litelog-backend/"
     
-    - name: Verify JAR was copied
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.ECS_HOST }}
-        username: root
-        password: ${{ secrets.ECS_PASSWORD }}
-        port: 22
-        timeout: 60s
-        script: |
-          echo "=== VERIFYING JAR FILE ==="
-          ls -la /opt/app/litelog-backend/*.jar
-          echo "=== VERIFICATION COMPLETE ==="
-    
     - name: Deploy to ECS via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -80,7 +67,7 @@ jobs:
           echo "Listing files in $APP_DIR:"
           ls -la
           
-          JAR_FILE=$(ls -1 *.jar 2>/dev/null | head -1)
+          JAR_FILE=$(find . -name "*.jar" -type f 2>/dev/null | head -1)
           
           if [ -z "$JAR_FILE" ]; then
               echo "ERROR: JAR file not found!"
@@ -89,7 +76,6 @@ jobs:
           
           echo "Found JAR: $JAR_FILE"
           
-          # Stop existing service
           PORT_PID=$(ss -tlnp | grep ':8080' | awk '{print $7}' | cut -d',' -f1 | cut -d'=' -f2 2>/dev/null)
           if [ ! -z "$PORT_PID" ] && [ "$PORT_PID" != "LISTEN" ] && [ "$PORT_PID" -gt 0 2>/dev/null ]; then
               echo "Stopping existing service (PID: $PORT_PID)..."
@@ -97,7 +83,6 @@ jobs:
               sleep 3
           fi
           
-          # Start service
           echo "Starting service..."
           nohup java -jar "$JAR_FILE" --spring.profiles.active=prod --server.port=8080 > "$LOG_FILE" 2>&1 &
           

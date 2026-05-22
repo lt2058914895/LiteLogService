@@ -49,9 +49,7 @@ jobs:
           
           cd "$APP_DIR"
           
-          pkill -f "java.*\.jar" 2>/dev/null || true
-          sleep 3
-          
+          # Find JAR file
           JAR_FILE=$(find . -name "*.jar" -type f 2>/dev/null | head -1)
           
           if [ -z "$JAR_FILE" ]; then
@@ -61,14 +59,35 @@ jobs:
           
           echo "Found JAR: $JAR_FILE"
           
+          # Stop service using PID file if exists
+          if [ -f "$APP_DIR/app.pid" ]; then
+              OLD_PID=$(cat "$APP_DIR/app.pid")
+              if ps -p "$OLD_PID" > /dev/null 2>&1; then
+                  echo "Stopping old service (PID: $OLD_PID)..."
+                  kill "$OLD_PID" 2>/dev/null || true
+                  sleep 3
+              fi
+          fi
+          
+          # Stop any process on port 8080 using fuser
+          if command -v fuser > /dev/null; then
+              fuser -k 8080/tcp 2>/dev/null || true
+              sleep 2
+          fi
+          
+          # Clear old logs
           > "$LOG_FILE"
           
+          # Start service
           echo "Starting service..."
           nohup java -jar "$JAR_FILE" --spring.profiles.active=prod --server.port=8080 > "$LOG_FILE" 2>&1 &
           
-          echo $! > "$APP_DIR/app.pid"
-          echo "Started with PID: $(cat "$APP_DIR/app.pid")"
+          # Save PID
+          NEW_PID=$!
+          echo "$NEW_PID" > "$APP_DIR/app.pid"
+          echo "Started with PID: $NEW_PID"
           
+          # Wait for startup
           echo "Waiting 30 seconds for service to start..."
           for i in {1..30}; do
               sleep 1
@@ -81,6 +100,7 @@ jobs:
           done
           echo ""
           
+          # Final check
           echo "Checking service status..."
           if ss -tlnp | grep ':8080' | grep -q LISTEN; then
               echo "=== DEPLOYMENT SUCCESS ==="

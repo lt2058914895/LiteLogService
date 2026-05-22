@@ -42,57 +42,124 @@ jobs:
         port: 22
         timeout: 180s
         script: |
-          echo "=== DEPLOYMENT START ==="
+          set -e
           
-          mkdir -p /opt/app/litelog-backend
+          APP_DIR="/opt/app/litelog-backend"
+          LOG_FILE="$APP_DIR/app.log"
+          PID_FILE="$APP_DIR/app.pid"
           
-          LITELOG_PID=$(pgrep -f "java.*litelog.*\.jar" 2>/dev/null)
+          echo "=========================================="
+          echo "🚀 LITELOG DEPLOYMENT START"
+          echo "=========================================="
           
-          if [ ! -z "$LITELOG_PID" ]; then
-              echo "Stopping litelog service (PID: $LITELOG_PID)..."
-              kill $LITELOG_PID 2>/dev/null
+          # Create app directory if not exists
+          mkdir -p "$APP_DIR"
+          
+          # --------------------------
+          # Step 1: Stop existing service
+          # --------------------------
+          echo ""
+          echo "📌 Step 1: Stopping existing services"
+          
+          # Stop ALL litelog Java processes using pkill
+          if pgrep -f "java.*litelog.*\.jar" > /dev/null; then
+              echo "   Stopping litelog services..."
+              pkill -f "java.*litelog.*\.jar" 2>/dev/null || true
               sleep 3
-              LITELOG_PID=$(pgrep -f "java.*litelog.*\.jar" 2>/dev/null)
-              if [ ! -z "$LITELOG_PID" ]; then
-                  kill -9 $LITELOG_PID 2>/dev/null
+              
+              # Force kill if any remaining
+              if pgrep -f "java.*litelog.*\.jar" > /dev/null; then
+                  echo "   Force killing remaining processes..."
+                  pkill -9 -f "java.*litelog.*\.jar" 2>/dev/null || true
                   sleep 2
               fi
-              echo "Service stopped"
+              echo "   ✅ All services stopped"
           else
-              echo "No litelog service running"
+              echo "   ℹ️ No litelog services running"
           fi
           
-          cd /opt/app/litelog-backend
+          # --------------------------
+          # Step 2: List files
+          # --------------------------
           echo ""
-          echo "Files:"
-          ls -la *.jar 2>/dev/null || echo "No JAR files"
+          echo "📌 Step 2: Checking deployment directory"
+          cd "$APP_DIR"
+          echo "   Directory: $APP_DIR"
+          echo "   Files:"
+          ls -la *.jar 2>/dev/null || echo "   ⚠️ No JAR files found"
+          
+          # --------------------------
+          # Step 3: Find JAR file
+          # --------------------------
+          echo ""
+          echo "📌 Step 3: Locating JAR file"
           
           JAR_FILE=$(ls -1 *.jar 2>/dev/null | head -1)
           
           if [ -z "$JAR_FILE" ]; then
-              echo "ERROR: JAR file not found!"
+              echo "   ❌ ERROR: JAR file not found!"
+              echo "=========================================="
               exit 1
           fi
           
-          echo ""
-          echo "Starting: $JAR_FILE"
+          echo "   ✅ Found JAR file: $JAR_FILE"
           
+          # --------------------------
+          # Step 4: Start service
+          # --------------------------
+          echo ""
+          echo "📌 Step 4: Starting service"
+          echo "   Command: java -jar $JAR_FILE --spring.profiles.active=prod --server.port=8080"
+          
+          # Clear old logs
+          > "$LOG_FILE"
+          
+          # Start service with nohup
           nohup java -jar "$JAR_FILE" \
               --spring.profiles.active=prod \
               --server.port=8080 \
-              > /opt/app/litelog-backend/app.log 2>&1 &
+              > "$LOG_FILE" 2>&1 &
           
-          sleep 12
+          # Save PID to file
+          echo $! > "$PID_FILE"
+          echo "   Process started with PID: $(cat "$PID_FILE")"
           
-          LITELOG_PID=$(pgrep -f "java.*$JAR_FILE" 2>/dev/null)
+          # --------------------------
+          # Step 5: Wait and verify
+          # --------------------------
+          echo ""
+          echo "📌 Step 5: Waiting for service to start..."
           
-          if [ ! -z "$LITELOG_PID" ]; then
+          # Wait with progress indicator
+          for i in {1..15}; do
+              sleep 1
+              echo -n "."
+          done
+          echo ""
+          
+          # Check if service is running
+          SERVICE_PID=$(pgrep -f "java.*$JAR_FILE" 2>/dev/null)
+          
+          if [ ! -z "$SERVICE_PID" ]; then
               echo ""
-              echo "=== DEPLOYMENT SUCCESS ==="
-              echo "PID: $LITELOG_PID"
+              echo "=========================================="
+              echo "🎉 DEPLOYMENT SUCCESSFUL!"
+              echo "=========================================="
+              echo "   Service PID: $SERVICE_PID"
+              echo "   Log file: $LOG_FILE"
+              echo "   Port: 8080"
+              echo "   Profile: prod"
+              echo ""
+              
+              # Show startup logs
+              echo "📝 Startup logs:"
+              tail -20 "$LOG_FILE"
           else
               echo ""
-              echo "=== DEPLOYMENT FAILED ==="
-              tail -30 /opt/app/litelog-backend/app.log
+              echo "=========================================="
+              echo "❌ DEPLOYMENT FAILED!"
+              echo "=========================================="
+              echo "📝 Application logs:"
+              tail -50 "$LOG_FILE"
               exit 1
           fi

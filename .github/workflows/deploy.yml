@@ -22,6 +22,19 @@ jobs:
     - name: Build with Maven
       run: mvn clean package -DskipTests -q
     
+    - name: Create app directory on ECS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.ECS_HOST }}
+        username: root
+        key: ${{ secrets.ECS_SSH_KEY }}
+        port: 22
+        timeout: 60s
+        use_insecure_cipher: true
+        script: |
+          mkdir -p /opt/app/litelog-backend
+          echo "✅ Directory created successfully"
+    
     - name: Copy JAR to ECS
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -29,6 +42,8 @@ jobs:
         username: root
         key: ${{ secrets.ECS_SSH_KEY }}
         port: 22
+        timeout: 120s
+        use_insecure_cipher: true
         source: "target/*.jar"
         target: "/opt/app/litelog-backend/"
     
@@ -39,30 +54,51 @@ jobs:
         username: root
         key: ${{ secrets.ECS_SSH_KEY }}
         port: 22
+        timeout: 120s
+        use_insecure_cipher: true
         script: |
-          # 创建应用目录（确保存在）
-          mkdir -p /opt/app/litelog-backend
-          
-          # 停止旧服务（如果运行中）
+          # Stop existing service if running
           if pgrep -f "java.*litelog" > /dev/null; then
-              echo "Stopping existing service..."
+              echo "⏹️ Stopping existing service..."
               pkill -f "java.*litelog"
               sleep 3
+              # Force kill if still running
+              if pgrep -f "java.*litelog" > /dev/null; then
+                  kill -9 $(pgrep -f "java.*litelog")
+                  sleep 2
+              fi
           fi
           
-          # 启动新服务
-          echo "Starting new service..."
+          # Navigate to app directory
           cd /opt/app/litelog-backend
-          nohup java -jar *.jar > app.log 2>&1 &
           
-          # 等待服务启动
-          sleep 5
+          # Get the JAR filename
+          JAR_FILE=$(ls -1 target/*.jar 2>/dev/null || ls -1 *.jar 2>/dev/null)
           
-          # 验证服务是否启动成功
+          if [ -z "$JAR_FILE" ]; then
+              echo "❌ JAR file not found!"
+              exit 1
+          fi
+          
+          echo "🚀 Starting new service with: $JAR_FILE"
+          
+          # Start the service with proper environment
+          nohup java -jar "$JAR_FILE" \
+              --spring.profiles.active=prod \
+              --server.port=8080 \
+              > /opt/app/litelog-backend/app.log 2>&1 &
+          
+          # Wait for service to start
+          echo "⏳ Waiting for service to start..."
+          sleep 8
+          
+          # Verify service is running
           if pgrep -f "java.*litelog" > /dev/null; then
               echo "✅ Deployment completed successfully!"
+              echo "📝 Checking service status..."
+              curl -s http://localhost:8080/actuator/health 2>/dev/null || echo "Health check endpoint not available"
           else
-              echo "❌ Service failed to start. Check logs:"
-              tail -20 /opt/app/litelog-backend/app.log
+              echo "❌ Service failed to start. Checking logs:"
+              tail -30 /opt/app/litelog-backend/app.log
               exit 1
           fi

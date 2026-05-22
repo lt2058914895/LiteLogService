@@ -52,44 +52,96 @@ jobs:
         username: root
         password: ${{ secrets.ECS_PASSWORD }}
         port: 22
-        timeout: 120s
+        timeout: 180s
         script: |
+          echo "=========================================="
+          echo "🚀 Starting deployment at $(date)"
+          echo "=========================================="
+          
           # Stop existing service if running
-          if pgrep -f "java.*litelog" > /dev/null; then
-              echo "⏹️ Stopping existing service..."
-              pkill -f "java.*litelog"
+          echo ""
+          echo "📌 Step 1: Check for existing services"
+          if pgrep -f "java.*\.jar" > /dev/null; then
+              echo "⏹️ Found running Java service, stopping..."
+              JAVA_PID=$(pgrep -f "java.*\.jar")
+              echo "   Found Java process: $JAVA_PID"
+              kill $JAVA_PID 2>/dev/null || true
               sleep 3
-              if pgrep -f "java.*litelog" > /dev/null; then
-                  kill -9 $(pgrep -f "java.*litelog")
+              # Force kill if still running
+              if pgrep -f "java.*\.jar" > /dev/null; then
+                  echo "   Force killing remaining processes..."
+                  kill -9 $(pgrep -f "java.*\.jar") 2>/dev/null || true
                   sleep 2
               fi
+              echo "✅ Service stopped successfully"
+          else
+              echo "ℹ️ No existing Java service running"
           fi
           
+          # Navigate to app directory
+          echo ""
+          echo "📌 Step 2: Navigate to app directory"
           cd /opt/app/litelog-backend
+          echo "   Current directory: $(pwd)"
           
-          JAR_FILE=$(ls -1 target/*.jar 2>/dev/null || ls -1 *.jar 2>/dev/null)
+          # List files for debugging
+          echo ""
+          echo "📌 Step 3: List files in app directory"
+          echo "   Files:"
+          ls -la
+          
+          # Get the JAR filename
+          echo ""
+          echo "📌 Step 4: Find JAR file"
+          JAR_FILE=$(ls -1 *.jar 2>/dev/null | head -1)
           
           if [ -z "$JAR_FILE" ]; then
-              echo "❌ JAR file not found!"
+              echo "❌ ERROR: JAR file not found!"
               exit 1
           fi
           
-          echo "🚀 Starting new service with: $JAR_FILE"
+          echo "   Found JAR file: $JAR_FILE"
+          
+          # Start the service
+          echo ""
+          echo "� Step 5: Start new service"
+          echo "   Command: nohup java -jar $JAR_FILE --spring.profiles.active=prod --server.port=8080"
           
           nohup java -jar "$JAR_FILE" \
               --spring.profiles.active=prod \
               --server.port=8080 \
               > /opt/app/litelog-backend/app.log 2>&1 &
           
-          echo "⏳ Waiting for service to start..."
-          sleep 8
+          # Wait and get PID
+          sleep 2
+          SERVICE_PID=$(pgrep -f "java.*$JAR_FILE")
+          echo "   Service PID: $SERVICE_PID"
           
-          if pgrep -f "java.*litelog" > /dev/null; then
+          # Wait for service to start
+          echo ""
+          echo "📌 Step 6: Wait for service to start"
+          echo "   Waiting 10 seconds..."
+          sleep 10
+          
+          # Verify service is running
+          echo ""
+          echo "📌 Step 7: Verify service status"
+          if pgrep -f "java.*$JAR_FILE" > /dev/null; then
               echo "✅ Deployment completed successfully!"
-              echo "📝 Checking service status..."
-              curl -s http://localhost:8080/actuator/health 2>/dev/null || echo "Health check endpoint not available"
+              echo ""
+              echo "📝 Service Status:"
+              echo "   - PID: $(pgrep -f "java.*$JAR_FILE")"
+              echo "   - Port: 8080"
+              echo "   - Log file: /opt/app/litelog-backend/app.log"
           else
-              echo "❌ Service failed to start. Checking logs:"
-              tail -30 /opt/app/litelog-backend/app.log
+              echo "❌ ERROR: Service failed to start!"
+              echo ""
+              echo "📝 Checking application logs:"
+              tail -50 /opt/app/litelog-backend/app.log
               exit 1
           fi
+          
+          echo ""
+          echo "=========================================="
+          echo "🎉 Deployment finished successfully!"
+          echo "=========================================="

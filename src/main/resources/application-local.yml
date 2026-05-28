@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://rm-uf6503kxd51m95x27.mysql.rds.aliyuncs.com:3306/litelog_dev?useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8
+    username: litelogdb
+    password: REDACTED
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      idle-timeout: 30000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+  
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+jwt:
+  secret: REDACTED
+  expiration: 86400000
+
+logging:
+  level:
+    com.example.litelog: DEBUG

@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://rm-uf6503kxd51m95x27.mysql.rds.aliyuncs.com:3306/litelog_dev?useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8
+    url: jdbc:mysql://rm-uf6503kxd51m95x27po.mysql.rds.aliyuncs.com:3306/litelog_dev?useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8
     username: litelogdb
     password: REDACTED
     driver-class-name: com.mysql.cj.jdbc.Driver

@@ -9,14 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RegisterResponse {
+public class LogoutResponse {
 
     private Boolean success;
-    private String userId;
-    private String nickname;
-    private String avatarUrl;
-    private String token;
-    private String tokenType = "Bearer";
-    private Long expiresIn;
     private String message;
 }

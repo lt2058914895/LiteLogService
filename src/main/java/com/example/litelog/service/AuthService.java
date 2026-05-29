@@ -4,6 +4,7 @@ import com.example.litelog.dto.request.LoginRequest;
 import com.example.litelog.dto.request.RegisterRequest;
 import com.example.litelog.dto.request.SmsLoginRequest;
 import com.example.litelog.dto.response.LoginResponse;
+import com.example.litelog.dto.response.LogoutResponse;
 import com.example.litelog.dto.response.RegisterResponse;
 import com.example.litelog.entity.User;
 import com.example.litelog.repository.UserRepository;
@@ -28,6 +29,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsService userDetailsService;
     private final SmsService smsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -48,16 +50,34 @@ public class AuthService {
         User user = User.builder()
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .nickname(generateRandomNickname())
                 .build();
 
         User savedUser = userRepository.save(user);
-        log.info("用户注册成功: {}", request.getPhone());
+        log.info("用户注册成功: {}, 昵称: {}", request.getPhone(), savedUser.getNickname());
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getPhone());
+        String token = jwtUtil.generateToken(userDetails);
 
         return RegisterResponse.builder()
                 .success(true)
-                .userId(savedUser.getId())
+                .userId(String.valueOf(savedUser.getId()))
+                .nickname(savedUser.getNickname())
+                .avatarUrl(savedUser.getAvatarUrl())
+                .token(token)
+                .tokenType("Bearer")
+                .expiresIn(jwtUtil.getExpiration())
                 .message("注册成功")
                 .build();
+    }
+
+    private String generateRandomNickname() {
+        String[] adjectives = {"Ace", "Brave", "Champ", "Dash", "Echo", "Flash", "Glow", "Hero", 
+                               "Iggy", "Jazz", "Kai", "Luna", "Max", "Nova", "Onyx", "Pulse", 
+                               "Quest", "Rush", "Sky", "Tiger", "Ultra", "Vibe", "Wave", "Xen", "Yolo", "Zest"};
+        String adjective = adjectives[(int) (Math.random() * adjectives.length)];
+        int suffix = (int) (Math.random() * 9000) + 1000;
+        return adjective + suffix;
     }
 
     public LoginResponse loginWithPassword(LoginRequest request) {
@@ -83,7 +103,9 @@ public class AuthService {
 
             return LoginResponse.builder()
                     .success(true)
-                    .userId(user.getId())
+                    .userId(String.valueOf(user.getId()))
+                    .nickname(user.getNickname())
+                    .avatarUrl(user.getAvatarUrl())
                     .token(token)
                     .tokenType("Bearer")
                     .expiresIn(jwtUtil.getExpiration())
@@ -121,11 +143,36 @@ public class AuthService {
 
         return LoginResponse.builder()
                 .success(true)
-                .userId(user.getId())
+                .userId(String.valueOf(user.getId()))
+                .nickname(user.getNickname())
+                .avatarUrl(user.getAvatarUrl())
                 .token(token)
                 .tokenType("Bearer")
                 .expiresIn(jwtUtil.getExpiration())
                 .message("登录成功")
                 .build();
+    }
+
+    public LogoutResponse logout(String token) {
+        try {
+            String cleanToken = token.replace("Bearer ", "").trim();
+            
+            long expirationTime = jwtUtil.getExpiration() * 1000 + System.currentTimeMillis();
+            tokenBlacklistService.blacklistToken(cleanToken, expirationTime);
+            
+            String username = jwtUtil.extractUsername(cleanToken);
+            log.info("用户退出登录: {}", username);
+            
+            return LogoutResponse.builder()
+                    .success(true)
+                    .message("退出登录成功")
+                    .build();
+        } catch (Exception e) {
+            log.warn("退出登录失败: {}", e.getMessage());
+            return LogoutResponse.builder()
+                    .success(true)
+                    .message("退出登录成功")
+                    .build();
+        }
     }
 }

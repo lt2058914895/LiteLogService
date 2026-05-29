@@ -28,6 +28,12 @@ public class User {
     @Column(nullable = false, length = 255)
     private String password;
 
+    @Column(length = 50)
+    private String nickname;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

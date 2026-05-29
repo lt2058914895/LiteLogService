@@ -41,7 +41,7 @@ public class AuthService {
         if (userRepository.existsByPhone(request.getPhone())) {
             return RegisterResponse.builder()
                     .success(false)
-                    .message("该手机号已注册")
+                    .message("该手机号已注册，请直接去登录")
                     .build();
         }
 
@@ -71,7 +71,7 @@ public class AuthService {
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(request.getPhone());
             User user = userRepository.findByPhone(request.getPhone()).orElse(null);
-            
+
             if (user == null) {
                 return LoginResponse.builder()
                         .success(false)
@@ -84,7 +84,7 @@ public class AuthService {
             return LoginResponse.builder()
                     .success(true)
                     .userId(user.getId())
-                    .accessToken(token)
+                    .token(token)
                     .tokenType("Bearer")
                     .expiresIn(jwtUtil.getExpiration())
                     .message("登录成功")
@@ -122,7 +122,7 @@ public class AuthService {
         return LoginResponse.builder()
                 .success(true)
                 .userId(user.getId())
-                .accessToken(token)
+                .token(token)
                 .tokenType("Bearer")
                 .expiresIn(jwtUtil.getExpiration())
                 .message("登录成功")

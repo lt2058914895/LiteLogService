@@ -13,7 +13,7 @@ public class LoginResponse {
 
     private Boolean success;
     private Long userId;
-    private String accessToken;
+    private String token;
     private String tokenType = "Bearer";
     private Long expiresIn;
     private String message;

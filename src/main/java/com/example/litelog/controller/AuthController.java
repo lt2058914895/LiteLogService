@@ -25,7 +25,7 @@ public class AuthController {
     private final AuthService authService;
     private final SmsService smsService;
 
-    @PostMapping("/send-sms")
+    @PostMapping("/sms/send")
     public ResponseEntity<SmsResponse> sendSMSCode(@Valid @RequestBody SmsSendRequest request) {
         boolean success = smsService.sendSMSCode(request.getPhone(), request.getType());
         if (success) {

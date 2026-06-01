@@ -5,6 +5,11 @@ server:
 spring:
   profiles:
     active: ${ENV:local}
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 10MB
 
 jwt:
   secret: REDACTED
@@ -14,3 +19,9 @@ logging:
   level:
     com.example.litelog: INFO
     org.springframework.security: INFO
+
+avatar:
+  upload:
+    path: ./uploads/avatars
+  base:
+    url: http://10.226.12.52:8080/api/avatars

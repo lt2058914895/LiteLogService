@@ -76,6 +76,9 @@ public class AvatarServiceImpl implements AvatarService {
 
             // 更新用户头像
             userRepository.findByPhone(userId).ifPresent(user -> {
+                // 删除旧头像文件
+                deleteOldAvatar(user.getAvatarUrl());
+                
                 user.setAvatarUrl(avatarUrl);
                 userRepository.save(user);
                 log.info("用户头像更新成功：{}, URL：{}", userId, avatarUrl);
@@ -103,5 +106,28 @@ public class AvatarServiceImpl implements AvatarService {
             case "image/gif" -> "gif";
             default -> "jpg";
         };
+    }
+
+    /**
+     * 删除旧头像文件
+     * @param oldAvatarUrl 旧头像URL
+     */
+    private void deleteOldAvatar(String oldAvatarUrl) {
+        if (oldAvatarUrl == null || oldAvatarUrl.isEmpty()) {
+            return;
+        }
+        
+        try {
+            // 从URL中提取文件名
+            String fileName = oldAvatarUrl.substring(oldAvatarUrl.lastIndexOf("/") + 1);
+            Path oldFilePath = Paths.get(uploadPath).resolve(fileName);
+            
+            if (Files.exists(oldFilePath)) {
+                Files.delete(oldFilePath);
+                log.info("旧头像文件已删除：{}", oldFilePath);
+            }
+        } catch (Exception e) {
+            log.warn("删除旧头像文件失败：{}", e.getMessage());
+        }
     }
 }

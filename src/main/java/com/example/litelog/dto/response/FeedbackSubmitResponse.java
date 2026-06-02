@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class FeedbackSubmitResponse {
 
     private Boolean success;
+    private Integer code;
     private String message;
     private Long feedbackId;
 }

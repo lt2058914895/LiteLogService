@@ -2,6 +2,7 @@ package com.example.litelog.service.impl;
 
 import com.example.litelog.dto.request.FeedbackSubmitRequest;
 import com.example.litelog.dto.response.FeedbackSubmitResponse;
+import com.example.litelog.dto.response.ResponseCode;
 import com.example.litelog.entity.Feedback;
 import com.example.litelog.repository.FeedbackRepository;
 import com.example.litelog.service.FeedbackService;
@@ -36,7 +37,8 @@ public class FeedbackServiceImpl implements FeedbackService {
 
             return FeedbackSubmitResponse.builder()
                     .success(true)
-                    .message("反馈提交成功")
+                    .code(ResponseCode.SUCCESS.getCode())
+                    .message(ResponseCode.SUCCESS.getMessage())
                     .feedbackId(savedFeedback.getId())
                     .build();
 
@@ -44,7 +46,8 @@ public class FeedbackServiceImpl implements FeedbackService {
             log.error("提交反馈失败：{}", e.getMessage());
             return FeedbackSubmitResponse.builder()
                     .success(false)
-                    .message("反馈提交失败：" + e.getMessage())
+                    .code(ResponseCode.FAILURE.getCode())
+                    .message(ResponseCode.FAILURE.getMessage())
                     .feedbackId(null)
                     .build();
         }

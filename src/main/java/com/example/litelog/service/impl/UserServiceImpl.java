@@ -22,13 +22,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UpdateProfileResponse updateProfile(String userId, UpdateProfileRequest request) {
+    public UpdateProfileResponse updateProfile(String phone, UpdateProfileRequest request) {
         try {
-            Long userIdLong = Long.parseLong(userId);
-            User user = userRepository.findById(userIdLong).orElse(null);
+            User user = userRepository.findByPhone(phone).orElse(null);
             
             if (user == null) {
-                log.warn("用户不存在：{}", userId);
+                log.warn("用户不存在：{}", phone);
                 return UpdateProfileResponse.builder()
                         .success(false)
                         .message("用户不存在")
@@ -47,7 +46,7 @@ public class UserServiceImpl implements UserService {
             User savedUser = userRepository.save(user);
             
             // 更新 UserProfile 表中的其他字段
-            UserProfile profile = userProfileRepository.findByUserId(userIdLong)
+            UserProfile profile = userProfileRepository.findByUserId(user.getId())
                     .orElse(UserProfile.builder()
                             .user(user)
                             .height(170.0)
@@ -73,7 +72,7 @@ public class UserServiceImpl implements UserService {
             }
 
             userProfileRepository.save(profile);
-            log.info("用户资料更新成功：{}, 昵称：{}", userId, savedUser.getNickname());
+            log.info("用户资料更新成功：{}, 昵称：{}", phone, savedUser.getNickname());
 
             return UpdateProfileResponse.builder()
                     .success(true)
@@ -82,12 +81,6 @@ public class UserServiceImpl implements UserService {
                     .avatarUrl(savedUser.getAvatarUrl())
                     .build();
 
-        } catch (NumberFormatException e) {
-            log.warn("无效的用户ID格式：{}", userId);
-            return UpdateProfileResponse.builder()
-                    .success(false)
-                    .message("无效的用户ID")
-                    .build();
         } catch (Exception e) {
             log.error("更新用户资料失败：{}", e.getMessage());
             return UpdateProfileResponse.builder()

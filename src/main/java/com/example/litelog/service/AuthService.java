@@ -2,10 +2,12 @@ package com.example.litelog.service;
 
 import com.example.litelog.dto.request.LoginRequest;
 import com.example.litelog.dto.request.RegisterRequest;
+import com.example.litelog.dto.request.ResetPasswordRequest;
 import com.example.litelog.dto.request.SmsLoginRequest;
 import com.example.litelog.dto.response.LoginResponse;
 import com.example.litelog.dto.response.LogoutResponse;
 import com.example.litelog.dto.response.RegisterResponse;
+import com.example.litelog.dto.response.ResetPasswordResponse;
 import com.example.litelog.entity.User;
 import com.example.litelog.entity.UserProfile;
 import com.example.litelog.repository.UserProfileRepository;
@@ -187,6 +189,35 @@ public class AuthService {
 
     private String generateRandomPassword() {
         return String.valueOf((int) (Math.random() * 90000000) + 10000000);
+    }
+
+    @Transactional
+    public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {
+        if (!smsService.verifyCode(request.getPhone(), request.getCode())) {
+            return ResetPasswordResponse.builder()
+                    .success(false)
+                    .message("验证码错误或已过期")
+                    .build();
+        }
+
+        User user = userRepository.findByPhone(request.getPhone()).orElse(null);
+        
+        if (user == null) {
+            return ResetPasswordResponse.builder()
+                    .success(false)
+                    .message("用户不存在")
+                    .build();
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        
+        log.info("用户密码重置成功: {}", request.getPhone());
+
+        return ResetPasswordResponse.builder()
+                .success(true)
+                .message("密码重置成功")
+                .build();
     }
 
     public LogoutResponse logout(String token) {

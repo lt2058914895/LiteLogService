@@ -26,8 +26,12 @@ public class FeedbackController {
             @Valid @RequestBody FeedbackSubmitRequest request,
             Authentication authentication) {
         
-        Long userId = Long.valueOf(authentication.getName());
-        log.info("用户 {} 提交反馈：type={}", userId, request.getType());
+        Long userId = null;
+        if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getName())) {
+            userId = Long.valueOf(authentication.getName());
+        }
+        
+        log.info("用户 {} 提交反馈：type={}", userId != null ? userId : "匿名", request.getType());
         
         FeedbackSubmitResponse response = feedbackService.submitFeedback(request, userId);
         return ResponseEntity.ok(response);

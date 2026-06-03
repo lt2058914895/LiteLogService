@@ -2,12 +2,15 @@ package com.example.litelog.service.impl;
 
 import com.example.litelog.dto.response.AvatarUploadResponse;
 import com.example.litelog.entity.User;
+import com.example.litelog.entity.UserProfile;
+import com.example.litelog.repository.UserProfileRepository;
 import com.example.litelog.repository.UserRepository;
 import com.example.litelog.service.AvatarService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -22,6 +25,7 @@ import java.util.UUID;
 public class AvatarServiceImpl implements AvatarService {
 
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
 
     @Value("${avatar.upload.path}")
     private String uploadPath;
@@ -30,6 +34,7 @@ public class AvatarServiceImpl implements AvatarService {
     private String baseUrl;
 
     @Override
+    @Transactional
     public AvatarUploadResponse uploadAvatar(String userId, MultipartFile file) {
         try {
             // 检查文件是否为空
@@ -74,8 +79,9 @@ public class AvatarServiceImpl implements AvatarService {
             // 构建访问URL
             String avatarUrl = baseUrl + "/" + fileName;
 
-            // 更新用户头像
-            userRepository.findByPhone(userId).ifPresent(user -> {
+            // 更新用户头像（在 User 表中）
+            Long userIdLong = Long.parseLong(userId);
+            userRepository.findById(userIdLong).ifPresent(user -> {
                 // 删除旧头像文件
                 deleteOldAvatar(user.getAvatarUrl());
                 
@@ -90,6 +96,12 @@ public class AvatarServiceImpl implements AvatarService {
                     .avatarUrl(avatarUrl)
                     .build();
 
+        } catch (NumberFormatException e) {
+            log.warn("无效的用户ID格式：{}", userId);
+            return AvatarUploadResponse.builder()
+                    .success(false)
+                    .message("无效的用户ID")
+                    .build();
         } catch (IOException e) {
             log.error("头像上传失败：{}", e.getMessage());
             return AvatarUploadResponse.builder()

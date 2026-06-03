@@ -7,6 +7,8 @@ import com.example.litelog.dto.response.LoginResponse;
 import com.example.litelog.dto.response.LogoutResponse;
 import com.example.litelog.dto.response.RegisterResponse;
 import com.example.litelog.entity.User;
+import com.example.litelog.entity.UserProfile;
+import com.example.litelog.repository.UserProfileRepository;
 import com.example.litelog.repository.UserRepository;
 import com.example.litelog.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
@@ -54,6 +57,18 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        
+        // 创建对应的用户资料（不含 nickname 和 avatar_url）
+        UserProfile profile = UserProfile.builder()
+                .user(savedUser)
+                .height(170.0)
+                .gender(0)
+                .age(30)
+                .goalWeight(65.0)
+                .build();
+        
+        userProfileRepository.save(profile);
+        
         log.info("用户注册成功: {}, 昵称: {}", request.getPhone(), savedUser.getNickname());
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getPhone());
@@ -120,6 +135,7 @@ public class AuthService {
         }
     }
 
+    @Transactional
     public LoginResponse loginWithSMSCode(SmsLoginRequest request) {
         if (!smsService.verifyCode(request.getPhone(), request.getCode())) {
             return LoginResponse.builder()
@@ -129,11 +145,27 @@ public class AuthService {
         }
 
         User user = userRepository.findByPhone(request.getPhone()).orElse(null);
+        
+        // 如果用户不存在，自动注册
         if (user == null) {
-            return LoginResponse.builder()
-                    .success(false)
-                    .message("用户不存在")
+            user = User.builder()
+                    .phone(request.getPhone())
+                    .password(passwordEncoder.encode(generateRandomPassword()))
+                    .nickname(generateRandomNickname())
                     .build();
+            user = userRepository.save(user);
+            
+            // 创建对应的用户资料
+            UserProfile profile = UserProfile.builder()
+                    .user(user)
+                    .height(170.0)
+                    .gender(0)
+                    .age(30)
+                    .goalWeight(65.0)
+                    .build();
+            userProfileRepository.save(profile);
+            
+            log.info("用户自动注册成功: {}", request.getPhone());
         }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getPhone());
@@ -151,6 +183,10 @@ public class AuthService {
                 .expiresIn(jwtUtil.getExpiration())
                 .message("登录成功")
                 .build();
+    }
+
+    private String generateRandomPassword() {
+        return String.valueOf((int) (Math.random() * 90000000) + 10000000);
     }
 
     public LogoutResponse logout(String token) {

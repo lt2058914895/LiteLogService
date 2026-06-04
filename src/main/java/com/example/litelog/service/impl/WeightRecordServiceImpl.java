@@ -92,13 +92,13 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .waistCircumference(request.getWaistCircumference())
                 .note(request.getNote())
                 .date(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochMilli(request.getDate()),
+                        java.time.Instant.ofEpochSecond(request.getDate()),
                         ZoneId.systemDefault()))
                 .createdAt(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochMilli(request.getCreatedAt()),
+                        java.time.Instant.ofEpochSecond(request.getCreatedAt()),
                         ZoneId.systemDefault()))
                 .updatedAt(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochMilli(request.getUpdatedAt()),
+                        java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
                         ZoneId.systemDefault()))
                 .build();
 
@@ -112,10 +112,10 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             existingRecord.setWaistCircumference(request.getWaistCircumference());
             existingRecord.setNote(request.getNote());
             existingRecord.setDate(LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochMilli(request.getDate()),
+                    java.time.Instant.ofEpochSecond(request.getDate()),
                     ZoneId.systemDefault()));
             existingRecord.setUpdatedAt(LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochMilli(request.getUpdatedAt()),
+                    java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
                     ZoneId.systemDefault()));
             weightRecordRepository.save(existingRecord);
         });

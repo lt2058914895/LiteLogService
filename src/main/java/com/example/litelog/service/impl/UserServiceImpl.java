@@ -53,6 +53,7 @@ public class UserServiceImpl implements UserService {
                             .gender(0)
                             .age(30)
                             .goalWeight(65.0)
+                            .weightUnit("kg")
                             .build());
 
             if (request.getHeight() != null) {
@@ -69,6 +70,10 @@ public class UserServiceImpl implements UserService {
             
             if (request.getGoalWeight() != null) {
                 profile.setGoalWeight(request.getGoalWeight());
+            }
+            
+            if (request.getWeightUnit() != null) {
+                profile.setWeightUnit(request.getWeightUnit());
             }
 
             userProfileRepository.save(profile);

@@ -24,4 +24,6 @@ public class UpdateProfileRequest {
     private Integer age;
 
     private Double goalWeight;
+
+    private String weightUnit;
 }

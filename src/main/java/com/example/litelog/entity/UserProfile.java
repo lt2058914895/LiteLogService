@@ -40,6 +40,10 @@ public class UserProfile {
     @Builder.Default
     private Double goalWeight = 65.0;
 
+    @Column(name = "weight_unit", nullable = false, length = 10)
+    @Builder.Default
+    private String weightUnit = "kg";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

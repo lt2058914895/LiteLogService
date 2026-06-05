@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Slf4j
 @RestController
 @RequestMapping("/user/avatar")
@@ -23,10 +25,31 @@ public class AvatarController {
     @PostMapping("/upload")
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
             @RequestParam("file") MultipartFile file,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest request) {
         
         String userId = authentication.getName();
         log.info("上传头像: userId={}", userId);
+        
+        // 检查是否为匿名用户
+        if (userId == null || "anonymousUser".equals(userId)) {
+            // 检查是否是 token 过期
+            Boolean tokenExpired = (Boolean) request.getAttribute("tokenExpired");
+            if (tokenExpired != null && tokenExpired) {
+                AvatarUploadResponse response = AvatarUploadResponse.builder()
+                        .success(false)
+                        .message("登录已过期，请重新登录")
+                        .build();
+                return ResponseEntity.ok(response);
+            }
+            
+            // 未登录
+            AvatarUploadResponse response = AvatarUploadResponse.builder()
+                    .success(false)
+                    .message("请先登录")
+                    .build();
+            return ResponseEntity.ok(response);
+        }
         
         AvatarUploadResponse response = avatarService.uploadAvatar(userId, file);
         return ResponseEntity.ok(response);

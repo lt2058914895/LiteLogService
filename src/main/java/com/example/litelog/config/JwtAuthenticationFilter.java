@@ -31,12 +31,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
+        // 如果没有 Authorization header，说明用户未登录
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String token = authHeader.substring(7);
+        String requestUri = request.getRequestURI();
 
         try {
             String username = jwtUtil.extractUsername(token);
@@ -58,6 +60,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         } catch (Exception e) {
             log.warn("JWT authentication failed: {}", e.getMessage());
+            
+            // 如果是头像上传接口，设置请求属性以便后续处理
+            if (requestUri.contains("/user/avatar")) {
+                if (e.getMessage() != null && e.getMessage().contains("expired")) {
+                    request.setAttribute("tokenExpired", true);
+                } else {
+                    request.setAttribute("tokenInvalid", true);
+                }
+            }
         }
 
         filterChain.doFilter(request, response);

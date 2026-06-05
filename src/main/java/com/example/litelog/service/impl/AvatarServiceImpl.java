@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Slf4j
@@ -68,13 +69,12 @@ public class AvatarServiceImpl implements AvatarService {
                 Files.createDirectories(uploadDir);
             }
 
-            // 生成唯一文件名
-            String extension = getFileExtension(contentType);
-            String fileName = UUID.randomUUID().toString() + "." + extension;
+            // 生成文件名：以 userId.jpg 命名
+            String fileName = userId + ".jpg";
             Path filePath = uploadDir.resolve(fileName);
 
-            // 保存文件
-            Files.copy(file.getInputStream(), filePath);
+            // 保存文件（允许覆盖已存在的文件）
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
             // 构建访问URL
             String avatarUrl = baseUrl + "/" + fileName;

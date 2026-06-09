@@ -38,6 +38,9 @@ public class WeightRecord {
     @Column(length = 500)
     private String note;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(nullable = false)
     private LocalDateTime date;
 

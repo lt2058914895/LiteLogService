@@ -25,3 +25,10 @@ avatar:
     path: ./uploads/avatars
   base:
     url: http://10.226.12.52:8080/api/avatars
+
+record:
+  image:
+    upload:
+      path: ./uploads/records
+    base:
+      url: http://10.226.12.52:8080/api/record-images

@@ -38,4 +38,14 @@ public class WeightRecordRequest {
      */
     @Builder.Default
     private Boolean deleted = false;
+
+    /**
+     * 图片URL（已上传的图片路径）
+     */
+    private String imageUrl;
+
+    /**
+     * 图片文件名（用于匹配上传的文件）
+     */
+    private String imageFileName;
 }

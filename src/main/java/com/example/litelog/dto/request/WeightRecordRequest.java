@@ -26,6 +26,8 @@ public class WeightRecordRequest {
 
     private Double thighCircumference;
 
+    private String measurementTimePeriod;
+
     private String note;
 
     @NotNull(message = "日期不能为空")

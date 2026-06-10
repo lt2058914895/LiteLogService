@@ -41,6 +41,9 @@ public class WeightRecord {
     @Column(name = "thigh_circumference")
     private Double thighCircumference;
 
+    @Column(name = "measurement_time_period", length = 50)
+    private String measurementTimePeriod;
+
     @Column(length = 500)
     private String note;
 

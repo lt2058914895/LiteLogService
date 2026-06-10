@@ -108,6 +108,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .waistCircumference(request.getWaistCircumference())
                 .hipCircumference(request.getHipCircumference())
                 .thighCircumference(request.getThighCircumference())
+                .measurementTimePeriod(request.getMeasurementTimePeriod())
                 .note(request.getNote())
                 .date(LocalDateTime.ofInstant(
                         java.time.Instant.ofEpochSecond(request.getDate()),
@@ -130,6 +131,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             existingRecord.setWaistCircumference(request.getWaistCircumference());
             existingRecord.setHipCircumference(request.getHipCircumference());
             existingRecord.setThighCircumference(request.getThighCircumference());
+            existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
             existingRecord.setNote(request.getNote());
             existingRecord.setDate(LocalDateTime.ofInstant(
                     java.time.Instant.ofEpochSecond(request.getDate()),
@@ -217,6 +219,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .waistCircumference(request.getWaistCircumference())
                 .hipCircumference(request.getHipCircumference())
                 .thighCircumference(request.getThighCircumference())
+                .measurementTimePeriod(request.getMeasurementTimePeriod())
                 .note(request.getNote())
                 .date(LocalDateTime.ofInstant(
                         java.time.Instant.ofEpochSecond(request.getDate()),
@@ -246,6 +249,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             existingRecord.setWaistCircumference(request.getWaistCircumference());
             existingRecord.setHipCircumference(request.getHipCircumference());
             existingRecord.setThighCircumference(request.getThighCircumference());
+            existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
             existingRecord.setNote(request.getNote());
             existingRecord.setDate(LocalDateTime.ofInstant(
                     java.time.Instant.ofEpochSecond(request.getDate()),

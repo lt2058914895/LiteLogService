@@ -106,6 +106,8 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .weight(request.getWeight())
                 .bodyFatPercentage(request.getBodyFatPercentage())
                 .waistCircumference(request.getWaistCircumference())
+                .hipCircumference(request.getHipCircumference())
+                .thighCircumference(request.getThighCircumference())
                 .note(request.getNote())
                 .date(LocalDateTime.ofInstant(
                         java.time.Instant.ofEpochSecond(request.getDate()),
@@ -126,6 +128,8 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             existingRecord.setWeight(request.getWeight());
             existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
             existingRecord.setWaistCircumference(request.getWaistCircumference());
+            existingRecord.setHipCircumference(request.getHipCircumference());
+            existingRecord.setThighCircumference(request.getThighCircumference());
             existingRecord.setNote(request.getNote());
             existingRecord.setDate(LocalDateTime.ofInstant(
                     java.time.Instant.ofEpochSecond(request.getDate()),
@@ -211,6 +215,8 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .weight(request.getWeight())
                 .bodyFatPercentage(request.getBodyFatPercentage())
                 .waistCircumference(request.getWaistCircumference())
+                .hipCircumference(request.getHipCircumference())
+                .thighCircumference(request.getThighCircumference())
                 .note(request.getNote())
                 .date(LocalDateTime.ofInstant(
                         java.time.Instant.ofEpochSecond(request.getDate()),
@@ -238,6 +244,8 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             existingRecord.setWeight(request.getWeight());
             existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
             existingRecord.setWaistCircumference(request.getWaistCircumference());
+            existingRecord.setHipCircumference(request.getHipCircumference());
+            existingRecord.setThighCircumference(request.getThighCircumference());
             existingRecord.setNote(request.getNote());
             existingRecord.setDate(LocalDateTime.ofInstant(
                     java.time.Instant.ofEpochSecond(request.getDate()),

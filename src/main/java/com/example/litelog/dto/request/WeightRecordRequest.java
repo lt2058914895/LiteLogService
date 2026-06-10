@@ -22,6 +22,10 @@ public class WeightRecordRequest {
 
     private Double waistCircumference;
 
+    private Double hipCircumference;
+
+    private Double thighCircumference;
+
     private String note;
 
     @NotNull(message = "日期不能为空")

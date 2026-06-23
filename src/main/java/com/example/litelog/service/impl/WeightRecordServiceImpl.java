@@ -3,9 +3,7 @@ package com.example.litelog.service.impl;
 import com.example.litelog.dto.request.WeightRecordRequest;
 import com.example.litelog.dto.request.WeightRecordSyncRequest;
 import com.example.litelog.dto.response.WeightRecordSyncResponse;
-import com.example.litelog.entity.User;
 import com.example.litelog.entity.WeightRecord;
-import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.WeightRecordService;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +24,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -35,7 +32,6 @@ import java.util.UUID;
 public class WeightRecordServiceImpl implements WeightRecordService {
 
     private final WeightRecordRepository weightRecordRepository;
-    private final UserRepository userRepository;
 
     @Value("${record.image.upload.path:./uploads/records}")
     private String imageUploadPath;
@@ -45,33 +41,18 @@ public class WeightRecordServiceImpl implements WeightRecordService {
 
     @Override
     @Transactional
-    public WeightRecordSyncResponse syncRecords(Long userId, WeightRecordSyncRequest request) {
+    public WeightRecordSyncResponse syncRecords(WeightRecordSyncRequest request) {
         try {
-            // 验证用户是否存在
-            Optional<User> userOptional = userRepository.findById(userId);
-            if (userOptional.isEmpty()) {
-                log.warn("用户不存在：{}", userId);
-                return WeightRecordSyncResponse.builder()
-                        .success(false)
-                        .message("用户不存在")
-                        .syncedCount(0)
-                        .syncedRecordIds(new ArrayList<>())
-                        .build();
-            }
-
             List<String> syncedRecordIds = new ArrayList<>();
 
             for (WeightRecordRequest recordRequest : request.getRecords()) {
                 try {
-                    // 如果标记为已删除，则删除云端记录
                     if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
                         deleteRecord(recordRequest.getRecordId());
                     } else if (weightRecordRepository.existsByRecordId(recordRequest.getRecordId())) {
-                        // 更新已存在的记录
-                        updateRecord(recordRequest, userId);
+                        updateRecord(recordRequest);
                     } else {
-                        // 创建新记录
-                        createRecord(recordRequest, userId);
+                        createRecord(recordRequest);
                     }
                     syncedRecordIds.add(recordRequest.getRecordId());
                 } catch (Exception e) {
@@ -79,7 +60,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 }
             }
 
-            log.info("用户 {} 体重记录同步完成，成功同步 {} 条", userId, syncedRecordIds.size());
+            log.info("体重记录同步完成，成功同步 {} 条", syncedRecordIds.size());
 
             return WeightRecordSyncResponse.builder()
                     .success(true)
@@ -99,9 +80,8 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
     }
 
-    private void createRecord(WeightRecordRequest request, Long userId) {
+    private void createRecord(WeightRecordRequest request) {
         WeightRecord record = WeightRecord.builder()
-                .userId(userId)
                 .recordId(request.getRecordId())
                 .weight(request.getWeight())
                 .bodyFatPercentage(request.getBodyFatPercentage())
@@ -125,7 +105,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         weightRecordRepository.save(record);
     }
 
-    private void updateRecord(WeightRecordRequest request, Long userId) {
+    private void updateRecord(WeightRecordRequest request) {
         weightRecordRepository.findByRecordId(request.getRecordId()).ifPresent(existingRecord -> {
             existingRecord.setWeight(request.getWeight());
             existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
@@ -147,7 +127,6 @@ public class WeightRecordServiceImpl implements WeightRecordService {
 
     private void deleteRecord(String recordId) {
         weightRecordRepository.findByRecordId(recordId).ifPresent(existingRecord -> {
-            // 删除关联的图片文件
             deleteRecordImage(existingRecord.getImageUrl());
             weightRecordRepository.delete(existingRecord);
             log.info("删除体重记录：{}", recordId);
@@ -156,25 +135,10 @@ public class WeightRecordServiceImpl implements WeightRecordService {
 
     @Override
     @Transactional
-    public WeightRecordSyncResponse syncRecordsWithImages(Long userId, WeightRecordSyncRequest request, List<MultipartFile> files) {
+    public WeightRecordSyncResponse syncRecordsWithImages(WeightRecordSyncRequest request, List<MultipartFile> files) {
         try {
-            Optional<User> userOptional = userRepository.findById(userId);
-            if (userOptional.isEmpty()) {
-                log.warn("用户不存在：{}", userId);
-                return WeightRecordSyncResponse.builder()
-                        .success(false)
-                        .message("用户不存在")
-                        .syncedCount(0)
-                        .syncedRecordIds(new ArrayList<>())
-                        .build();
-            }
-
-            // 确保上传目录存在
             ensureUploadDirectoryExists();
-
-            // 构建文件映射：原始文件名 -> MultipartFile
             Map<String, MultipartFile> fileMap = buildFileMap(files);
-
             List<String> syncedRecordIds = new ArrayList<>();
 
             for (WeightRecordRequest recordRequest : request.getRecords()) {
@@ -182,9 +146,9 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
                         deleteRecord(recordRequest.getRecordId());
                     } else if (weightRecordRepository.existsByRecordId(recordRequest.getRecordId())) {
-                        updateRecordWithImage(recordRequest, userId, fileMap);
+                        updateRecordWithImage(recordRequest, fileMap);
                     } else {
-                        createRecordWithImage(recordRequest, userId, fileMap);
+                        createRecordWithImage(recordRequest, fileMap);
                     }
                     syncedRecordIds.add(recordRequest.getRecordId());
                 } catch (Exception e) {
@@ -192,7 +156,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 }
             }
 
-            log.info("用户 {} 体重记录同步完成(含图片)，成功同步 {} 条", userId, syncedRecordIds.size());
+            log.info("体重记录同步完成(含图片)，成功同步 {} 条", syncedRecordIds.size());
 
             return WeightRecordSyncResponse.builder()
                     .success(true)
@@ -212,9 +176,8 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
     }
 
-    private void createRecordWithImage(WeightRecordRequest request, Long userId, Map<String, MultipartFile> fileMap) throws IOException {
+    private void createRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap) throws IOException {
         WeightRecord record = WeightRecord.builder()
-                .userId(userId)
                 .recordId(request.getRecordId())
                 .weight(request.getWeight())
                 .bodyFatPercentage(request.getBodyFatPercentage())
@@ -235,17 +198,16 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                         ZoneId.systemDefault()))
                 .build();
 
-        // 处理图片上传
         String imageFileName = request.getImageFileName();
         if (imageFileName != null && !imageFileName.isEmpty() && fileMap.containsKey(imageFileName)) {
-            String imageUrl = saveImage(fileMap.get(imageFileName), userId, request.getRecordId());
+            String imageUrl = saveImage(fileMap.get(imageFileName), request.getRecordId());
             record.setImageUrl(imageUrl);
         }
 
         weightRecordRepository.save(record);
     }
 
-    private void updateRecordWithImage(WeightRecordRequest request, Long userId, Map<String, MultipartFile> fileMap) throws IOException {
+    private void updateRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap) throws IOException {
         weightRecordRepository.findByRecordId(request.getRecordId()).ifPresent(existingRecord -> {
             existingRecord.setWeight(request.getWeight());
             existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
@@ -262,14 +224,11 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
                     ZoneId.systemDefault()));
 
-            // 处理图片上传
             String imageFileName = request.getImageFileName();
             try {
                 if (imageFileName != null && !imageFileName.isEmpty() && fileMap.containsKey(imageFileName)) {
-                    // 删除旧图片
                     deleteRecordImage(existingRecord.getImageUrl());
-                    // 保存新图片
-                    String imageUrl = saveImage(fileMap.get(imageFileName), userId, request.getRecordId());
+                    String imageUrl = saveImage(fileMap.get(imageFileName), request.getRecordId());
                     existingRecord.setImageUrl(imageUrl);
                 }
             } catch (IOException e) {
@@ -300,27 +259,22 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         return fileMap;
     }
 
-    private String saveImage(MultipartFile file, Long userId, String recordId) throws IOException {
-        // 检查文件类型
+    private String saveImage(MultipartFile file, String recordId) throws IOException {
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new IllegalArgumentException("请上传有效的图片文件");
         }
 
-        // 检查文件大小（限制为5MB）
         if (file.getSize() > 5 * 1024 * 1024) {
             throw new IllegalArgumentException("图片大小不能超过5MB");
         }
 
-        // 生成文件名：userId_recordId_uuid.ext
         String extension = getFileExtension(contentType);
-        String fileName = userId + "_" + recordId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + extension;
+        String fileName = recordId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + extension;
         Path filePath = Paths.get(imageUploadPath).resolve(fileName);
 
-        // 保存文件
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-        // 构建访问URL
         String imageUrl = imageBaseUrl + "/" + fileName;
         log.info("记录图片保存成功：{}", imageUrl);
 
@@ -342,7 +296,6 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
 
         try {
-            // 从URL中提取文件名
             String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
             Path filePath = Paths.get(imageUploadPath).resolve(fileName);
 

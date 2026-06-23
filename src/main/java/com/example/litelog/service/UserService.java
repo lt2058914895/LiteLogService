@@ -6,7 +6,7 @@ import com.example.litelog.dto.response.UpdateProfileResponse;
 
 public interface UserService {
 
-    UpdateProfileResponse updateProfile(String phone, UpdateProfileRequest request);
+    UpdateProfileResponse updateProfile(UpdateProfileRequest request);
 
-    GetProfileResponse getProfile(String phone);
+    GetProfileResponse getProfile();
 }

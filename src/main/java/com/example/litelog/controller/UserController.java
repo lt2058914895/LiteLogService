@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -20,23 +19,20 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/profile")
-    public ResponseEntity<GetProfileResponse> getProfile(Authentication authentication) {
-        String phone = authentication.getName();
-        log.info("获取用户资料: phone={}", phone);
+    public ResponseEntity<GetProfileResponse> getProfile() {
+        log.info("获取用户资料");
         
-        GetProfileResponse response = userService.getProfile(phone);
+        GetProfileResponse response = userService.getProfile();
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/profile")
     public ResponseEntity<UpdateProfileResponse> updateProfile(
-            @Valid @RequestBody UpdateProfileRequest request,
-            Authentication authentication) {
+            @Valid @RequestBody UpdateProfileRequest request) {
         
-        String phone = authentication.getName();
-        log.info("更新用户信息: phone={}, nickname={}", phone, request.getNickname());
+        log.info("更新用户信息: nickname={}", request.getNickname());
         
-        UpdateProfileResponse response = userService.updateProfile(phone, request);
+        UpdateProfileResponse response = userService.updateProfile(request);
         return ResponseEntity.ok(response);
     }
 }

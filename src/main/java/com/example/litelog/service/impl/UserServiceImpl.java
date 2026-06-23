@@ -3,108 +3,86 @@ package com.example.litelog.service.impl;
 import com.example.litelog.dto.request.UpdateProfileRequest;
 import com.example.litelog.dto.response.GetProfileResponse;
 import com.example.litelog.dto.response.UpdateProfileResponse;
-import com.example.litelog.entity.User;
-import com.example.litelog.entity.UserProfile;
-import com.example.litelog.repository.UserProfileRepository;
-import com.example.litelog.repository.UserRepository;
 import com.example.litelog.service.UserService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
+    // 简单的内存存储，实际应用中可以使用数据库
+    private String nickname = "用户";
+    private String avatarUrl = null;
+    private Double height = 170.0;
+    private Integer gender = 0;
+    private Integer age = 30;
+    private Double goalWeight = 65.0;
+    private Double goalBodyFat = null;
+    private Double goalWaistCircumference = null;
+    private Double goalHipCircumference = null;
+    private Double goalChestCircumference = null;
+    private Double goalThighCircumference = null;
+    private String weightUnit = "kg";
 
     @Override
-    @Transactional
-    public UpdateProfileResponse updateProfile(String phone, UpdateProfileRequest request) {
+    public UpdateProfileResponse updateProfile(UpdateProfileRequest request) {
         try {
-            User user = userRepository.findByPhone(phone).orElse(null);
-            
-            if (user == null) {
-                log.warn("用户不存在：{}", phone);
-                return UpdateProfileResponse.builder()
-                        .success(false)
-                        .message("用户不存在")
-                        .build();
-            }
-
-            // 更新 User 表中的 nickname 和 avatar_url
             if (request.getNickname() != null) {
-                user.setNickname(request.getNickname());
+                this.nickname = request.getNickname();
             }
             
             if (request.getAvatarUrl() != null) {
-                user.setAvatarUrl(request.getAvatarUrl());
+                this.avatarUrl = request.getAvatarUrl();
             }
             
-            User savedUser = userRepository.save(user);
-            
-            // 更新 UserProfile 表中的其他字段
-            UserProfile profile = userProfileRepository.findByUserId(user.getId())
-                    .orElse(UserProfile.builder()
-                            .user(user)
-                            .height(170.0)
-                            .gender(0)
-                            .age(30)
-                            .goalWeight(65.0)
-                            .weightUnit("kg")
-                            .build());
-
             if (request.getHeight() != null) {
-                profile.setHeight(request.getHeight());
+                this.height = request.getHeight();
             }
             
             if (request.getGender() != null) {
-                profile.setGender(request.getGender());
+                this.gender = request.getGender();
             }
             
             if (request.getAge() != null) {
-                profile.setAge(request.getAge());
+                this.age = request.getAge();
             }
             
             if (request.getGoalWeight() != null) {
-                profile.setGoalWeight(request.getGoalWeight());
+                this.goalWeight = request.getGoalWeight();
             }
             
             if (request.getGoalBodyFat() != null) {
-                profile.setGoalBodyFat(request.getGoalBodyFat());
+                this.goalBodyFat = request.getGoalBodyFat();
             }
             
             if (request.getGoalWaistCircumference() != null) {
-                profile.setGoalWaistCircumference(request.getGoalWaistCircumference());
+                this.goalWaistCircumference = request.getGoalWaistCircumference();
             }
             
             if (request.getGoalHipCircumference() != null) {
-                profile.setGoalHipCircumference(request.getGoalHipCircumference());
+                this.goalHipCircumference = request.getGoalHipCircumference();
             }
             
             if (request.getGoalChestCircumference() != null) {
-                profile.setGoalChestCircumference(request.getGoalChestCircumference());
+                this.goalChestCircumference = request.getGoalChestCircumference();
             }
             
             if (request.getGoalThighCircumference() != null) {
-                profile.setGoalThighCircumference(request.getGoalThighCircumference());
+                this.goalThighCircumference = request.getGoalThighCircumference();
             }
             
             if (request.getWeightUnit() != null) {
-                profile.setWeightUnit(request.getWeightUnit());
+                this.weightUnit = request.getWeightUnit();
             }
 
-            userProfileRepository.save(profile);
-            log.info("用户资料更新成功：{}, 昵称：{}", phone, savedUser.getNickname());
+            log.info("用户资料更新成功：昵称：{}", this.nickname);
 
             return UpdateProfileResponse.builder()
                     .success(true)
                     .message("更新成功")
-                    .nickname(savedUser.getNickname())
-                    .avatarUrl(savedUser.getAvatarUrl())
+                    .nickname(this.nickname)
+                    .avatarUrl(this.avatarUrl)
                     .build();
 
         } catch (Exception e) {
@@ -117,43 +95,23 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public GetProfileResponse getProfile(String phone) {
+    public GetProfileResponse getProfile() {
         try {
-            User user = userRepository.findByPhone(phone).orElse(null);
-            
-            if (user == null) {
-                log.warn("用户不存在：{}", phone);
-                return GetProfileResponse.builder()
-                        .success(false)
-                        .message("用户不存在")
-                        .build();
-            }
-
-            UserProfile profile = userProfileRepository.findByUserId(user.getId())
-                    .orElse(UserProfile.builder()
-                            .user(user)
-                            .height(170.0)
-                            .gender(0)
-                            .age(30)
-                            .goalWeight(65.0)
-                            .weightUnit("kg")
-                            .build());
-
             return GetProfileResponse.builder()
                     .success(true)
                     .message("获取成功")
-                    .nickname(user.getNickname())
-                    .avatarUrl(user.getAvatarUrl())
-                    .height(profile.getHeight())
-                    .gender(profile.getGender())
-                    .age(profile.getAge())
-                    .goalWeight(profile.getGoalWeight())
-                    .goalBodyFat(profile.getGoalBodyFat())
-                    .goalWaistCircumference(profile.getGoalWaistCircumference())
-                    .goalHipCircumference(profile.getGoalHipCircumference())
-                    .goalChestCircumference(profile.getGoalChestCircumference())
-                    .goalThighCircumference(profile.getGoalThighCircumference())
-                    .weightUnit(profile.getWeightUnit())
+                    .nickname(this.nickname)
+                    .avatarUrl(this.avatarUrl)
+                    .height(this.height)
+                    .gender(this.gender)
+                    .age(this.age)
+                    .goalWeight(this.goalWeight)
+                    .goalBodyFat(this.goalBodyFat)
+                    .goalWaistCircumference(this.goalWaistCircumference)
+                    .goalHipCircumference(this.goalHipCircumference)
+                    .goalChestCircumference(this.goalChestCircumference)
+                    .goalThighCircumference(this.goalThighCircumference)
+                    .weightUnit(this.weightUnit)
                     .build();
 
         } catch (Exception e) {

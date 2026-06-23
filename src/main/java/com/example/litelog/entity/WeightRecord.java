@@ -38,6 +38,9 @@ public class WeightRecord {
     @Column(name = "hip_circumference")
     private Double hipCircumference;
 
+    @Column(name = "chest_circumference")
+    private Double chestCircumference;
+
     @Column(name = "thigh_circumference")
     private Double thighCircumference;
 

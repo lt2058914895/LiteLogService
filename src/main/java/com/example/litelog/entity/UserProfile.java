@@ -40,6 +40,21 @@ public class UserProfile {
     @Builder.Default
     private Double goalWeight = 65.0;
 
+    @Column(name = "goal_body_fat")
+    private Double goalBodyFat;
+
+    @Column(name = "goal_waist_circumference")
+    private Double goalWaistCircumference;
+
+    @Column(name = "goal_hip_circumference")
+    private Double goalHipCircumference;
+
+    @Column(name = "goal_chest_circumference")
+    private Double goalChestCircumference;
+
+    @Column(name = "goal_thigh_circumference")
+    private Double goalThighCircumference;
+
     @Column(name = "weight_unit", nullable = false, length = 10)
     @Builder.Default
     private String weightUnit = "kg";

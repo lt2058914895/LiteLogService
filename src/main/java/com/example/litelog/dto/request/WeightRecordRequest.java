@@ -24,6 +24,8 @@ public class WeightRecordRequest {
 
     private Double hipCircumference;
 
+    private Double chestCircumference;
+
     private Double thighCircumference;
 
     private String measurementTimePeriod;

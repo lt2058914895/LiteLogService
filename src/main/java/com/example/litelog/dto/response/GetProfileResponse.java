@@ -1,6 +1,5 @@
-package com.example.litelog.dto.request;
+package com.example.litelog.dto.response;
 
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,9 +9,12 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdateProfileRequest {
+public class GetProfileResponse {
 
-    @Size(min = 1, max = 50, message = "昵称长度必须在1-50个字符之间")
+    private Boolean success;
+
+    private String message;
+
     private String nickname;
 
     private String avatarUrl;

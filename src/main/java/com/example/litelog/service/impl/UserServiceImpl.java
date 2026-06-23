@@ -1,6 +1,7 @@
 package com.example.litelog.service.impl;
 
 import com.example.litelog.dto.request.UpdateProfileRequest;
+import com.example.litelog.dto.response.GetProfileResponse;
 import com.example.litelog.dto.response.UpdateProfileResponse;
 import com.example.litelog.entity.User;
 import com.example.litelog.entity.UserProfile;
@@ -72,6 +73,26 @@ public class UserServiceImpl implements UserService {
                 profile.setGoalWeight(request.getGoalWeight());
             }
             
+            if (request.getGoalBodyFat() != null) {
+                profile.setGoalBodyFat(request.getGoalBodyFat());
+            }
+            
+            if (request.getGoalWaistCircumference() != null) {
+                profile.setGoalWaistCircumference(request.getGoalWaistCircumference());
+            }
+            
+            if (request.getGoalHipCircumference() != null) {
+                profile.setGoalHipCircumference(request.getGoalHipCircumference());
+            }
+            
+            if (request.getGoalChestCircumference() != null) {
+                profile.setGoalChestCircumference(request.getGoalChestCircumference());
+            }
+            
+            if (request.getGoalThighCircumference() != null) {
+                profile.setGoalThighCircumference(request.getGoalThighCircumference());
+            }
+            
             if (request.getWeightUnit() != null) {
                 profile.setWeightUnit(request.getWeightUnit());
             }
@@ -91,6 +112,55 @@ public class UserServiceImpl implements UserService {
             return UpdateProfileResponse.builder()
                     .success(false)
                     .message("更新失败，请重试")
+                    .build();
+        }
+    }
+
+    @Override
+    public GetProfileResponse getProfile(String phone) {
+        try {
+            User user = userRepository.findByPhone(phone).orElse(null);
+            
+            if (user == null) {
+                log.warn("用户不存在：{}", phone);
+                return GetProfileResponse.builder()
+                        .success(false)
+                        .message("用户不存在")
+                        .build();
+            }
+
+            UserProfile profile = userProfileRepository.findByUserId(user.getId())
+                    .orElse(UserProfile.builder()
+                            .user(user)
+                            .height(170.0)
+                            .gender(0)
+                            .age(30)
+                            .goalWeight(65.0)
+                            .weightUnit("kg")
+                            .build());
+
+            return GetProfileResponse.builder()
+                    .success(true)
+                    .message("获取成功")
+                    .nickname(user.getNickname())
+                    .avatarUrl(user.getAvatarUrl())
+                    .height(profile.getHeight())
+                    .gender(profile.getGender())
+                    .age(profile.getAge())
+                    .goalWeight(profile.getGoalWeight())
+                    .goalBodyFat(profile.getGoalBodyFat())
+                    .goalWaistCircumference(profile.getGoalWaistCircumference())
+                    .goalHipCircumference(profile.getGoalHipCircumference())
+                    .goalChestCircumference(profile.getGoalChestCircumference())
+                    .goalThighCircumference(profile.getGoalThighCircumference())
+                    .weightUnit(profile.getWeightUnit())
+                    .build();
+
+        } catch (Exception e) {
+            log.error("获取用户资料失败：{}", e.getMessage());
+            return GetProfileResponse.builder()
+                    .success(false)
+                    .message("获取失败，请重试")
                     .build();
         }
     }

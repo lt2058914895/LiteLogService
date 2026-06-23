@@ -107,6 +107,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .bodyFatPercentage(request.getBodyFatPercentage())
                 .waistCircumference(request.getWaistCircumference())
                 .hipCircumference(request.getHipCircumference())
+                .chestCircumference(request.getChestCircumference())
                 .thighCircumference(request.getThighCircumference())
                 .measurementTimePeriod(request.getMeasurementTimePeriod())
                 .note(request.getNote())
@@ -130,6 +131,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
             existingRecord.setWaistCircumference(request.getWaistCircumference());
             existingRecord.setHipCircumference(request.getHipCircumference());
+            existingRecord.setChestCircumference(request.getChestCircumference());
             existingRecord.setThighCircumference(request.getThighCircumference());
             existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
             existingRecord.setNote(request.getNote());
@@ -218,6 +220,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .bodyFatPercentage(request.getBodyFatPercentage())
                 .waistCircumference(request.getWaistCircumference())
                 .hipCircumference(request.getHipCircumference())
+                .chestCircumference(request.getChestCircumference())
                 .thighCircumference(request.getThighCircumference())
                 .measurementTimePeriod(request.getMeasurementTimePeriod())
                 .note(request.getNote())
@@ -248,6 +251,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
             existingRecord.setWaistCircumference(request.getWaistCircumference());
             existingRecord.setHipCircumference(request.getHipCircumference());
+            existingRecord.setChestCircumference(request.getChestCircumference());
             existingRecord.setThighCircumference(request.getThighCircumference());
             existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
             existingRecord.setNote(request.getNote());

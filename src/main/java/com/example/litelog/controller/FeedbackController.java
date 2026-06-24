@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,17 +22,11 @@ public class FeedbackController {
 
     @PostMapping("/submit")
     public ResponseEntity<FeedbackSubmitResponse> submitFeedback(
-            @Valid @RequestBody FeedbackSubmitRequest request,
-            Authentication authentication) {
+            @Valid @RequestBody FeedbackSubmitRequest request) {
         
-        Long userId = null;
-        if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getName())) {
-            userId = Long.valueOf(authentication.getName());
-        }
+        log.info("用户提交反馈：type={}", request.getType());
         
-        log.info("用户 {} 提交反馈：type={}", userId != null ? userId : "匿名", request.getType());
-        
-        FeedbackSubmitResponse response = feedbackService.submitFeedback(request, userId);
+        FeedbackSubmitResponse response = feedbackService.submitFeedback(request, null);
         return ResponseEntity.ok(response);
     }
 }

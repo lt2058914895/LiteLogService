@@ -3,86 +3,142 @@ package com.example.litelog.service.impl;
 import com.example.litelog.dto.request.UpdateProfileRequest;
 import com.example.litelog.dto.response.GetProfileResponse;
 import com.example.litelog.dto.response.UpdateProfileResponse;
+import com.example.litelog.entity.User;
+import com.example.litelog.entity.UserProfile;
+import com.example.litelog.repository.UserProfileRepository;
+import com.example.litelog.repository.UserRepository;
 import com.example.litelog.service.UserService;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    // 简单的内存存储，实际应用中可以使用数据库
-    private String nickname = "用户";
-    private String avatarUrl = null;
-    private Double height = 170.0;
-    private Integer gender = 0;
-    private Integer age = 30;
-    private Double goalWeight = 65.0;
-    private Double goalBodyFat = null;
-    private Double goalWaistCircumference = null;
-    private Double goalHipCircumference = null;
-    private Double goalChestCircumference = null;
-    private Double goalThighCircumference = null;
-    private String weightUnit = "kg";
+    private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+
+    private static final Long DEFAULT_USER_ID = 1L;
+
+    private User getOrCreateDefaultUser() {
+        Optional<User> existingUser = userRepository.findById(DEFAULT_USER_ID);
+        if (existingUser.isPresent()) {
+            return existingUser.get();
+        }
+
+        User newUser = User.builder()
+                .id(DEFAULT_USER_ID)
+                .phone("default_user")
+                .password("")
+                .nickname("用户")
+                .build();
+        return userRepository.save(newUser);
+    }
+
+    private UserProfile getOrCreateUserProfile() {
+        User user = getOrCreateDefaultUser();
+        
+        Optional<UserProfile> existingProfile = userProfileRepository.findByUserId(user.getId());
+        if (existingProfile.isPresent()) {
+            return existingProfile.get();
+        }
+
+        UserProfile newProfile = UserProfile.builder()
+                .user(user)
+                .height(170.0)
+                .gender(0)
+                .age(30)
+                .goalWeight(65.0)
+                .goalBodyFat(null)
+                .goalWaistCircumference(null)
+                .goalHipCircumference(null)
+                .goalChestCircumference(null)
+                .goalThighCircumference(null)
+                .weightUnit("kg")
+                .build();
+        return userProfileRepository.save(newProfile);
+    }
 
     @Override
+    @Transactional
     public UpdateProfileResponse updateProfile(UpdateProfileRequest request) {
         try {
+            User user = getOrCreateDefaultUser();
+            UserProfile profile = getOrCreateUserProfile();
+
             if (request.getNickname() != null) {
-                this.nickname = request.getNickname();
-            }
-            
-            if (request.getAvatarUrl() != null) {
-                this.avatarUrl = request.getAvatarUrl();
-            }
-            
-            if (request.getHeight() != null) {
-                this.height = request.getHeight();
-            }
-            
-            if (request.getGender() != null) {
-                this.gender = request.getGender();
-            }
-            
-            if (request.getAge() != null) {
-                this.age = request.getAge();
-            }
-            
-            if (request.getGoalWeight() != null) {
-                this.goalWeight = request.getGoalWeight();
-            }
-            
-            if (request.getGoalBodyFat() != null) {
-                this.goalBodyFat = request.getGoalBodyFat();
-            }
-            
-            if (request.getGoalWaistCircumference() != null) {
-                this.goalWaistCircumference = request.getGoalWaistCircumference();
-            }
-            
-            if (request.getGoalHipCircumference() != null) {
-                this.goalHipCircumference = request.getGoalHipCircumference();
-            }
-            
-            if (request.getGoalChestCircumference() != null) {
-                this.goalChestCircumference = request.getGoalChestCircumference();
-            }
-            
-            if (request.getGoalThighCircumference() != null) {
-                this.goalThighCircumference = request.getGoalThighCircumference();
-            }
-            
-            if (request.getWeightUnit() != null) {
-                this.weightUnit = request.getWeightUnit();
+                user.setNickname(request.getNickname());
             }
 
-            log.info("用户资料更新成功：昵称：{}", this.nickname);
+            if (request.getAvatarUrl() != null) {
+                user.setAvatarUrl(request.getAvatarUrl());
+            }
+
+            if (request.getHeight() != null) {
+                profile.setHeight(request.getHeight());
+            }
+
+            if (request.getGender() != null) {
+                profile.setGender(request.getGender());
+            }
+
+            if (request.getAge() != null) {
+                profile.setAge(request.getAge());
+            }
+
+            if (request.getGoalWeight() != null) {
+                profile.setGoalWeight(request.getGoalWeight());
+            }
+
+            if (request.getGoalBodyFat() != null) {
+                profile.setGoalBodyFat(request.getGoalBodyFat());
+            }
+
+            if (request.getGoalWaistCircumference() != null) {
+                profile.setGoalWaistCircumference(request.getGoalWaistCircumference());
+            }
+
+            if (request.getGoalHipCircumference() != null) {
+                profile.setGoalHipCircumference(request.getGoalHipCircumference());
+            }
+
+            if (request.getGoalChestCircumference() != null) {
+                profile.setGoalChestCircumference(request.getGoalChestCircumference());
+            }
+
+            if (request.getGoalThighCircumference() != null) {
+                profile.setGoalThighCircumference(request.getGoalThighCircumference());
+            }
+
+            if (request.getWeightUnit() != null) {
+                profile.setWeightUnit(request.getWeightUnit());
+            }
+
+            userRepository.save(user);
+            userProfileRepository.save(profile);
+
+            log.info("用户资料更新成功：昵称：{}", user.getNickname());
 
             return UpdateProfileResponse.builder()
                     .success(true)
                     .message("更新成功")
-                    .nickname(this.nickname)
-                    .avatarUrl(this.avatarUrl)
+                    .nickname(user.getNickname())
+                    .avatarUrl(user.getAvatarUrl())
+                    .height(profile.getHeight())
+                    .gender(profile.getGender())
+                    .age(profile.getAge())
+                    .goalWeight(profile.getGoalWeight())
+                    .goalBodyFat(profile.getGoalBodyFat())
+                    .goalWaistCircumference(profile.getGoalWaistCircumference())
+                    .goalHipCircumference(profile.getGoalHipCircumference())
+                    .goalChestCircumference(profile.getGoalChestCircumference())
+                    .goalThighCircumference(profile.getGoalThighCircumference())
+                    .weightUnit(profile.getWeightUnit())
                     .build();
 
         } catch (Exception e) {
@@ -97,21 +153,24 @@ public class UserServiceImpl implements UserService {
     @Override
     public GetProfileResponse getProfile() {
         try {
+            User user = getOrCreateDefaultUser();
+            UserProfile profile = getOrCreateUserProfile();
+
             return GetProfileResponse.builder()
                     .success(true)
                     .message("获取成功")
-                    .nickname(this.nickname)
-                    .avatarUrl(this.avatarUrl)
-                    .height(this.height)
-                    .gender(this.gender)
-                    .age(this.age)
-                    .goalWeight(this.goalWeight)
-                    .goalBodyFat(this.goalBodyFat)
-                    .goalWaistCircumference(this.goalWaistCircumference)
-                    .goalHipCircumference(this.goalHipCircumference)
-                    .goalChestCircumference(this.goalChestCircumference)
-                    .goalThighCircumference(this.goalThighCircumference)
-                    .weightUnit(this.weightUnit)
+                    .nickname(user.getNickname())
+                    .avatarUrl(user.getAvatarUrl())
+                    .height(profile.getHeight())
+                    .gender(profile.getGender())
+                    .age(profile.getAge())
+                    .goalWeight(profile.getGoalWeight())
+                    .goalBodyFat(profile.getGoalBodyFat())
+                    .goalWaistCircumference(profile.getGoalWaistCircumference())
+                    .goalHipCircumference(profile.getGoalHipCircumference())
+                    .goalChestCircumference(profile.getGoalChestCircumference())
+                    .goalThighCircumference(profile.getGoalThighCircumference())
+                    .weightUnit(profile.getWeightUnit())
                     .build();
 
         } catch (Exception e) {

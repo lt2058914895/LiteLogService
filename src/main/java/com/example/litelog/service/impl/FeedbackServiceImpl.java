@@ -6,17 +6,21 @@ import com.example.litelog.dto.response.ResponseCode;
 import com.example.litelog.entity.Feedback;
 import com.example.litelog.repository.FeedbackRepository;
 import com.example.litelog.service.FeedbackService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class FeedbackServiceImpl implements FeedbackService {
 
+    private static final Logger log = LoggerFactory.getLogger(FeedbackServiceImpl.class);
+
     private final FeedbackRepository feedbackRepository;
+
+    public FeedbackServiceImpl(FeedbackRepository feedbackRepository) {
+        this.feedbackRepository = feedbackRepository;
+    }
 
     @Override
     @Transactional

@@ -8,8 +8,8 @@ import com.example.litelog.entity.WeightRecord;
 import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.WeightRecordService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,13 +29,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class WeightRecordServiceImpl implements WeightRecordService {
+
+    private static final Logger log = LoggerFactory.getLogger(WeightRecordServiceImpl.class);
 
     private final WeightRecordRepository weightRecordRepository;
     private final UserRepository userRepository;
+
+    public WeightRecordServiceImpl(WeightRecordRepository weightRecordRepository, UserRepository userRepository) {
+        this.weightRecordRepository = weightRecordRepository;
+        this.userRepository = userRepository;
+    }
 
     @Value("${record.image.upload.path:./uploads/records}")
     private String imageUploadPath;

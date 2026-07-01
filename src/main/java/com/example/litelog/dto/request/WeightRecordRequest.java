@@ -1,15 +1,7 @@
 package com.example.litelog.dto.request;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class WeightRecordRequest {
 
     @NotNull(message = "记录ID不能为空")
@@ -41,19 +33,153 @@ public class WeightRecordRequest {
     @NotNull(message = "更新时间不能为空")
     private Long updatedAt;
 
-    /**
-     * 是否已删除
-     */
-    @Builder.Default
     private Boolean deleted = false;
 
-    /**
-     * 图片URL（已上传的图片路径）
-     */
     private String imageUrl;
 
-    /**
-     * 图片文件名（用于匹配上传的文件）
-     */
     private String imageFileName;
+
+    public WeightRecordRequest() {
+    }
+
+    public WeightRecordRequest(String recordId, Double weight, Double bodyFatPercentage, Double waistCircumference,
+                               Double hipCircumference, Double chestCircumference, Double thighCircumference,
+                               String measurementTimePeriod, String note, Long date, Long createdAt, Long updatedAt,
+                               Boolean deleted, String imageUrl, String imageFileName) {
+        this.recordId = recordId;
+        this.weight = weight;
+        this.bodyFatPercentage = bodyFatPercentage;
+        this.waistCircumference = waistCircumference;
+        this.hipCircumference = hipCircumference;
+        this.chestCircumference = chestCircumference;
+        this.thighCircumference = thighCircumference;
+        this.measurementTimePeriod = measurementTimePeriod;
+        this.note = note;
+        this.date = date;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.deleted = deleted;
+        this.imageUrl = imageUrl;
+        this.imageFileName = imageFileName;
+    }
+
+    public String getRecordId() {
+        return recordId;
+    }
+
+    public void setRecordId(String recordId) {
+        this.recordId = recordId;
+    }
+
+    public Double getWeight() {
+        return weight;
+    }
+
+    public void setWeight(Double weight) {
+        this.weight = weight;
+    }
+
+    public Double getBodyFatPercentage() {
+        return bodyFatPercentage;
+    }
+
+    public void setBodyFatPercentage(Double bodyFatPercentage) {
+        this.bodyFatPercentage = bodyFatPercentage;
+    }
+
+    public Double getWaistCircumference() {
+        return waistCircumference;
+    }
+
+    public void setWaistCircumference(Double waistCircumference) {
+        this.waistCircumference = waistCircumference;
+    }
+
+    public Double getHipCircumference() {
+        return hipCircumference;
+    }
+
+    public void setHipCircumference(Double hipCircumference) {
+        this.hipCircumference = hipCircumference;
+    }
+
+    public Double getChestCircumference() {
+        return chestCircumference;
+    }
+
+    public void setChestCircumference(Double chestCircumference) {
+        this.chestCircumference = chestCircumference;
+    }
+
+    public Double getThighCircumference() {
+        return thighCircumference;
+    }
+
+    public void setThighCircumference(Double thighCircumference) {
+        this.thighCircumference = thighCircumference;
+    }
+
+    public String getMeasurementTimePeriod() {
+        return measurementTimePeriod;
+    }
+
+    public void setMeasurementTimePeriod(String measurementTimePeriod) {
+        this.measurementTimePeriod = measurementTimePeriod;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public Long getDate() {
+        return date;
+    }
+
+    public void setDate(Long date) {
+        this.date = date;
+    }
+
+    public Long getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Long createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Long updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Boolean getDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(Boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public String getImageFileName() {
+        return imageFileName;
+    }
+
+    public void setImageFileName(String imageFileName) {
+        this.imageFileName = imageFileName;
+    }
 }

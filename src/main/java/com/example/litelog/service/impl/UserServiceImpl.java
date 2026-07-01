@@ -11,8 +11,8 @@ import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.UserService;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -25,14 +25,20 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final WeightRecordRepository weightRecordRepository;
+
+    public UserServiceImpl(UserRepository userRepository, UserProfileRepository userProfileRepository, WeightRecordRepository weightRecordRepository) {
+        this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
+        this.weightRecordRepository = weightRecordRepository;
+    }
 
     @Override
     @Transactional
@@ -260,24 +266,16 @@ public class UserServiceImpl implements UserService {
     public String uploadAvatar(String userId, String idType, byte[] imageData, String originalFilename) {
         try {
             User user = getUserByIdentifier(userId, idType);
-            Long userIdValue = user.getId();
 
             Path storageDir = Paths.get(AVATAR_STORAGE_DIR);
             if (!Files.exists(storageDir)) {
                 Files.createDirectories(storageDir);
             }
 
-            String extension = getFileExtension(originalFilename);
-            String newFilename = "avatar_" + userIdValue + extension;
+            String newFilename = originalFilename;
             Path newFilePath = storageDir.resolve(newFilename);
 
-            String oldAvatarUrl = user.getAvatarUrl();
-
             Files.write(newFilePath, imageData);
-
-            if (oldAvatarUrl != null && !oldAvatarUrl.isEmpty()) {
-                deleteOldAvatar(oldAvatarUrl);
-            }
 
             String avatarUrl = AVATAR_URL_PREFIX + newFilename;
             user.setAvatarUrl(avatarUrl);

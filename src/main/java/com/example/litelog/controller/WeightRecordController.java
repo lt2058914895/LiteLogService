@@ -6,22 +6,27 @@ import com.example.litelog.service.WeightRecordService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-@Slf4j
 @RestController
 @RequestMapping("/weight")
-@RequiredArgsConstructor
 public class WeightRecordController {
+
+    private static final Logger log = LoggerFactory.getLogger(WeightRecordController.class);
 
     private final WeightRecordService weightRecordService;
     private final ObjectMapper objectMapper;
+
+    public WeightRecordController(WeightRecordService weightRecordService, ObjectMapper objectMapper) {
+        this.weightRecordService = weightRecordService;
+        this.objectMapper = objectMapper;
+    }
 
     @PostMapping("/sync")
     public ResponseEntity<WeightRecordSyncResponse> syncRecords(

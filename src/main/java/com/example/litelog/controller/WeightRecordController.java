@@ -25,26 +25,30 @@ public class WeightRecordController {
 
     @PostMapping("/sync")
     public ResponseEntity<WeightRecordSyncResponse> syncRecords(
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-Id-Type", required = false, defaultValue = "device") String idType,
             @Valid @RequestBody WeightRecordSyncRequest request) {
         
-        log.info("同步体重记录: recordCount={}", request.getRecords().size());
+        log.info("同步体重记录: userId={}, idType={}, recordCount={}", userId, idType, request.getRecords().size());
         
-        WeightRecordSyncResponse response = weightRecordService.syncRecords(request);
+        WeightRecordSyncResponse response = weightRecordService.syncRecords(userId, idType, request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping(value = "/sync-with-images", consumes = "multipart/form-data")
     public ResponseEntity<WeightRecordSyncResponse> syncRecordsWithImages(
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-Id-Type", required = false, defaultValue = "device") String idType,
             @RequestParam("records") String recordsJson,
             @RequestParam(value = "files", required = false) List<MultipartFile> files) {
         
         try {
             WeightRecordSyncRequest request = objectMapper.readValue(recordsJson, WeightRecordSyncRequest.class);
             
-            log.info("同步体重记录(含图片): recordCount={}, fileCount={}", 
-                    request.getRecords().size(), files != null ? files.size() : 0);
+            log.info("同步体重记录(含图片): userId={}, idType={}, recordCount={}, fileCount={}", 
+                    userId, idType, request.getRecords().size(), files != null ? files.size() : 0);
             
-            WeightRecordSyncResponse response = weightRecordService.syncRecordsWithImages(request, files);
+            WeightRecordSyncResponse response = weightRecordService.syncRecordsWithImages(userId, idType, request, files);
             return ResponseEntity.ok(response);
             
         } catch (JsonProcessingException e) {

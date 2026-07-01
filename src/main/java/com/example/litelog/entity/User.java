@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
-    @UniqueConstraint(columnNames = "phone")
+    @UniqueConstraint(columnNames = "phone"),
+    @UniqueConstraint(columnNames = "apple_id")
 })
 @Data
 @Builder
@@ -22,7 +23,13 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(name = "apple_id", unique = true, length = 200)
+    private String appleId;
+
+    @Column(name = "device_id", unique = true, length = 50)
+    private String deviceId;
+
+    @Column(nullable = false, unique = true, length = 50)
     private String phone;
 
     @Column(nullable = false, length = 255)

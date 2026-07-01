@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface WeightRecordService {
 
-    WeightRecordSyncResponse syncRecords(WeightRecordSyncRequest request);
+    WeightRecordSyncResponse syncRecords(String userId, String idType, WeightRecordSyncRequest request);
 
-    WeightRecordSyncResponse syncRecordsWithImages(WeightRecordSyncRequest request, List<MultipartFile> files);
+    WeightRecordSyncResponse syncRecordsWithImages(String userId, String idType, WeightRecordSyncRequest request, List<MultipartFile> files);
 }

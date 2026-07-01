@@ -6,7 +6,13 @@ import com.example.litelog.dto.response.UpdateProfileResponse;
 
 public interface UserService {
 
-    UpdateProfileResponse updateProfile(UpdateProfileRequest request);
+    UpdateProfileResponse updateProfile(String userId, String idType, UpdateProfileRequest request);
 
-    GetProfileResponse getProfile();
+    GetProfileResponse getProfile(String userId, String idType);
+
+    String uploadAvatar(String userId, String idType, byte[] imageData, String originalFilename);
+    
+    Long getOrCreateUserId(String userId, String idType);
+    
+    Object fetchAllData(String userId, String idType);
 }

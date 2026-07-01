@@ -3,7 +3,9 @@ package com.example.litelog.service.impl;
 import com.example.litelog.dto.request.WeightRecordRequest;
 import com.example.litelog.dto.request.WeightRecordSyncRequest;
 import com.example.litelog.dto.response.WeightRecordSyncResponse;
+import com.example.litelog.entity.User;
 import com.example.litelog.entity.WeightRecord;
+import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.WeightRecordService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -32,6 +35,7 @@ import java.util.UUID;
 public class WeightRecordServiceImpl implements WeightRecordService {
 
     private final WeightRecordRepository weightRecordRepository;
+    private final UserRepository userRepository;
 
     @Value("${record.image.upload.path:./uploads/records}")
     private String imageUploadPath;
@@ -39,10 +43,57 @@ public class WeightRecordServiceImpl implements WeightRecordService {
     @Value("${record.image.base.url:http://localhost:8080/api/record-images}")
     private String imageBaseUrl;
 
+    private Long getUserId(String userId, String idType) {
+        if (userId == null || userId.isEmpty()) {
+            return 1L;
+        }
+
+        Optional<User> existingUser = findUserByIdentifier(userId, idType);
+        if (existingUser.isPresent()) {
+            return existingUser.get().getId();
+        }
+
+        User newUser = User.builder()
+                .phone("user_" + UUID.randomUUID().toString().substring(0, 10))
+                .password("")
+                .nickname("用户")
+                .build();
+
+        switch (idType) {
+            case "device":
+                newUser.setDeviceId(userId);
+                break;
+            case "custom_phone":
+                newUser.setCustomPhone(userId);
+                break;
+            case "custom_email":
+                newUser.setCustomEmail(userId);
+                break;
+            default:
+                newUser.setDeviceId(userId);
+        }
+
+        return userRepository.save(newUser).getId();
+    }
+
+    private Optional<User> findUserByIdentifier(String userId, String idType) {
+        switch (idType) {
+            case "device":
+                return userRepository.findByDeviceId(userId);
+            case "custom_phone":
+                return userRepository.findByCustomPhone(userId);
+            case "custom_email":
+                return userRepository.findByCustomEmail(userId);
+            default:
+                return userRepository.findByDeviceId(userId);
+        }
+    }
+
     @Override
     @Transactional
-    public WeightRecordSyncResponse syncRecords(WeightRecordSyncRequest request) {
+    public WeightRecordSyncResponse syncRecords(String userId, String idType, WeightRecordSyncRequest request) {
         try {
+            Long userIdValue = getUserId(userId, idType);
             List<String> syncedRecordIds = new ArrayList<>();
 
             for (WeightRecordRequest recordRequest : request.getRecords()) {
@@ -52,7 +103,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     } else if (weightRecordRepository.existsByRecordId(recordRequest.getRecordId())) {
                         updateRecord(recordRequest);
                     } else {
-                        createRecord(recordRequest);
+                        createRecord(recordRequest, userIdValue);
                     }
                     syncedRecordIds.add(recordRequest.getRecordId());
                 } catch (Exception e) {
@@ -60,7 +111,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 }
             }
 
-            log.info("体重记录同步完成，成功同步 {} 条", syncedRecordIds.size());
+            log.info("体重记录同步完成，userId={}, idType={}, 成功同步 {} 条", userId, idType, syncedRecordIds.size());
 
             return WeightRecordSyncResponse.builder()
                     .success(true)
@@ -70,7 +121,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     .build();
 
         } catch (Exception e) {
-            log.error("同步体重记录失败：{}", e.getMessage());
+            log.error("同步体重记录失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
             return WeightRecordSyncResponse.builder()
                     .success(false)
                     .message("同步失败，请重试")
@@ -80,8 +131,9 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
     }
 
-    private void createRecord(WeightRecordRequest request) {
+    private void createRecord(WeightRecordRequest request, Long userId) {
         WeightRecord record = WeightRecord.builder()
+                .userId(userId)
                 .recordId(request.getRecordId())
                 .weight(request.getWeight())
                 .bodyFatPercentage(request.getBodyFatPercentage())
@@ -135,8 +187,9 @@ public class WeightRecordServiceImpl implements WeightRecordService {
 
     @Override
     @Transactional
-    public WeightRecordSyncResponse syncRecordsWithImages(WeightRecordSyncRequest request, List<MultipartFile> files) {
+    public WeightRecordSyncResponse syncRecordsWithImages(String userId, String idType, WeightRecordSyncRequest request, List<MultipartFile> files) {
         try {
+            Long userIdValue = getUserId(userId, idType);
             ensureUploadDirectoryExists();
             Map<String, MultipartFile> fileMap = buildFileMap(files);
             List<String> syncedRecordIds = new ArrayList<>();
@@ -148,7 +201,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     } else if (weightRecordRepository.existsByRecordId(recordRequest.getRecordId())) {
                         updateRecordWithImage(recordRequest, fileMap);
                     } else {
-                        createRecordWithImage(recordRequest, fileMap);
+                        createRecordWithImage(recordRequest, fileMap, userIdValue);
                     }
                     syncedRecordIds.add(recordRequest.getRecordId());
                 } catch (Exception e) {
@@ -156,7 +209,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 }
             }
 
-            log.info("体重记录同步完成(含图片)，成功同步 {} 条", syncedRecordIds.size());
+            log.info("体重记录同步完成(含图片)，userId={}, idType={}, 成功同步 {} 条", userId, idType, syncedRecordIds.size());
 
             return WeightRecordSyncResponse.builder()
                     .success(true)
@@ -166,7 +219,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     .build();
 
         } catch (Exception e) {
-            log.error("同步体重记录失败：{}", e.getMessage());
+            log.error("同步体重记录失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
             return WeightRecordSyncResponse.builder()
                     .success(false)
                     .message("同步失败，请重试")
@@ -176,8 +229,9 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
     }
 
-    private void createRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap) throws IOException {
+    private void createRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap, Long userId) throws IOException {
         WeightRecord record = WeightRecord.builder()
+                .userId(userId)
                 .recordId(request.getRecordId())
                 .weight(request.getWeight())
                 .bodyFatPercentage(request.getBodyFatPercentage())

@@ -6,6 +6,7 @@ import com.example.litelog.dto.response.UpdateProfileResponse;
 import com.example.litelog.entity.User;
 import com.example.litelog.entity.UserProfile;
 import com.example.litelog.entity.WeightRecord;
+import com.example.litelog.exception.BusinessException;
 import com.example.litelog.repository.UserProfileRepository;
 import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
@@ -286,7 +287,7 @@ public class UserServiceImpl implements UserService {
 
         } catch (IOException e) {
             log.error("头像上传失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
-            throw new RuntimeException("头像上传失败");
+            throw new BusinessException("头像上传失败");
         }
     }
 

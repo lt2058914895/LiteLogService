@@ -4,6 +4,7 @@ public enum ResponseCode {
     
     SUCCESS(20000, "success"),
     FAILURE(50000, "failure"),
+    SERVER_FAILURE(50001, "server_failure"),
     PARAM_ERROR(40000, "param_error"),
     UNAUTHORIZED(40100, "unauthorized"),
     FEEDBACK_TYPE_INVALID(40001, "feedback_type_invalid"),

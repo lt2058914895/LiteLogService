@@ -1,17 +1,27 @@
 package com.example.litelog.exception;
 
-import org.springframework.http.HttpStatus;
+import com.example.litelog.dto.response.ResponseCode;
 
 public class BusinessException extends RuntimeException {
 
-    private final HttpStatus status;
+    private final int code;
 
-    public BusinessException(String message, HttpStatus status) {
+    public BusinessException(String message) {
         super(message);
-        this.status = status;
+        this.code = ResponseCode.FAILURE.getCode();
     }
 
-    public HttpStatus getStatus() {
-        return status;
+    public BusinessException(int code, String message) {
+        super(message);
+        this.code = code;
+    }
+
+    public BusinessException(ResponseCode responseCode) {
+        super(responseCode.getMessage());
+        this.code = responseCode.getCode();
+    }
+
+    public int getCode() {
+        return code;
     }
 }

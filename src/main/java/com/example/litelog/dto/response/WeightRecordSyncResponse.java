@@ -8,6 +8,7 @@ public class WeightRecordSyncResponse {
     private String message;
     private int syncedCount;
     private List<String> syncedRecordIds;
+    private List<String> conflictRecordIds;
 
     public WeightRecordSyncResponse() {
     }
@@ -17,6 +18,14 @@ public class WeightRecordSyncResponse {
         this.message = message;
         this.syncedCount = syncedCount;
         this.syncedRecordIds = syncedRecordIds;
+    }
+
+    public WeightRecordSyncResponse(boolean success, String message, int syncedCount, List<String> syncedRecordIds, List<String> conflictRecordIds) {
+        this.success = success;
+        this.message = message;
+        this.syncedCount = syncedCount;
+        this.syncedRecordIds = syncedRecordIds;
+        this.conflictRecordIds = conflictRecordIds;
     }
 
     public static WeightRecordSyncResponseBuilder builder() {
@@ -55,11 +64,20 @@ public class WeightRecordSyncResponse {
         this.syncedRecordIds = syncedRecordIds;
     }
 
+    public List<String> getConflictRecordIds() {
+        return conflictRecordIds;
+    }
+
+    public void setConflictRecordIds(List<String> conflictRecordIds) {
+        this.conflictRecordIds = conflictRecordIds;
+    }
+
     public static class WeightRecordSyncResponseBuilder {
         private boolean success;
         private String message;
         private int syncedCount;
         private List<String> syncedRecordIds;
+        private List<String> conflictRecordIds;
 
         public WeightRecordSyncResponseBuilder success(boolean success) {
             this.success = success;
@@ -81,8 +99,13 @@ public class WeightRecordSyncResponse {
             return this;
         }
 
+        public WeightRecordSyncResponseBuilder conflictRecordIds(List<String> conflictRecordIds) {
+            this.conflictRecordIds = conflictRecordIds;
+            return this;
+        }
+
         public WeightRecordSyncResponse build() {
-            return new WeightRecordSyncResponse(success, message, syncedCount, syncedRecordIds);
+            return new WeightRecordSyncResponse(success, message, syncedCount, syncedRecordIds, conflictRecordIds);
         }
     }
 }

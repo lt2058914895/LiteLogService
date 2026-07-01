@@ -5,6 +5,7 @@ import com.example.litelog.dto.request.WeightRecordSyncRequest;
 import com.example.litelog.dto.response.WeightRecordSyncResponse;
 import com.example.litelog.entity.User;
 import com.example.litelog.entity.WeightRecord;
+import com.example.litelog.exception.BusinessException;
 import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.WeightRecordService;
@@ -59,8 +60,6 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
 
         User newUser = User.builder()
-                .phone("user_" + UUID.randomUUID().toString().substring(0, 10))
-                .password("")
                 .nickname("用户")
                 .build();
 
@@ -100,29 +99,41 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         try {
             Long userIdValue = getUserId(userId, idType);
             List<String> syncedRecordIds = new ArrayList<>();
+            List<String> conflictRecordIds = new ArrayList<>();
 
             for (WeightRecordRequest recordRequest : request.getRecords()) {
                 try {
                     if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
                         deleteRecord(recordRequest.getRecordId());
+                        syncedRecordIds.add(recordRequest.getRecordId());
                     } else if (weightRecordRepository.existsByRecordId(recordRequest.getRecordId())) {
-                        updateRecord(recordRequest);
+                        if (updateRecordWithConflictCheck(recordRequest)) {
+                            syncedRecordIds.add(recordRequest.getRecordId());
+                        } else {
+                            conflictRecordIds.add(recordRequest.getRecordId());
+                        }
                     } else {
                         createRecord(recordRequest, userIdValue);
+                        syncedRecordIds.add(recordRequest.getRecordId());
                     }
-                    syncedRecordIds.add(recordRequest.getRecordId());
                 } catch (Exception e) {
                     log.warn("同步记录失败：{}, 错误：{}", recordRequest.getRecordId(), e.getMessage());
                 }
             }
 
-            log.info("体重记录同步完成，userId={}, idType={}, 成功同步 {} 条", userId, idType, syncedRecordIds.size());
+            String message = "同步成功";
+            if (!conflictRecordIds.isEmpty()) {
+                message = String.format("同步成功，%d 条记录存在冲突已跳过", conflictRecordIds.size());
+            }
+            log.info("体重记录同步完成，userId={}, idType={}, 成功同步 {} 条，冲突 {} 条", 
+                    userId, idType, syncedRecordIds.size(), conflictRecordIds.size());
 
             return WeightRecordSyncResponse.builder()
                     .success(true)
-                    .message("同步成功")
+                    .message(message)
                     .syncedCount(syncedRecordIds.size())
                     .syncedRecordIds(syncedRecordIds)
+                    .conflictRecordIds(conflictRecordIds)
                     .build();
 
         } catch (Exception e) {
@@ -132,6 +143,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     .message("同步失败，请重试")
                     .syncedCount(0)
                     .syncedRecordIds(new ArrayList<>())
+                    .conflictRecordIds(new ArrayList<>())
                     .build();
         }
     }
@@ -160,6 +172,36 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .build();
 
         weightRecordRepository.save(record);
+    }
+
+    private boolean updateRecordWithConflictCheck(WeightRecordRequest request) {
+        return weightRecordRepository.findByRecordId(request.getRecordId()).map(existingRecord -> {
+            LocalDateTime serverUpdatedAt = existingRecord.getUpdatedAt();
+            LocalDateTime clientUpdatedAt = LocalDateTime.ofInstant(
+                    java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
+                    ZoneId.systemDefault());
+
+            if (serverUpdatedAt.isAfter(clientUpdatedAt)) {
+                log.info("记录存在冲突，跳过更新：recordId={}, serverUpdatedAt={}, clientUpdatedAt={}", 
+                        request.getRecordId(), serverUpdatedAt, clientUpdatedAt);
+                return false;
+            }
+
+            existingRecord.setWeight(request.getWeight());
+            existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
+            existingRecord.setWaistCircumference(request.getWaistCircumference());
+            existingRecord.setHipCircumference(request.getHipCircumference());
+            existingRecord.setChestCircumference(request.getChestCircumference());
+            existingRecord.setThighCircumference(request.getThighCircumference());
+            existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
+            existingRecord.setNote(request.getNote());
+            existingRecord.setDate(LocalDateTime.ofInstant(
+                    java.time.Instant.ofEpochSecond(request.getDate()),
+                    ZoneId.systemDefault()));
+            existingRecord.setUpdatedAt(clientUpdatedAt);
+            weightRecordRepository.save(existingRecord);
+            return true;
+        }).orElse(false);
     }
 
     private void updateRecord(WeightRecordRequest request) {
@@ -321,11 +363,11 @@ public class WeightRecordServiceImpl implements WeightRecordService {
     private String saveImage(MultipartFile file, String recordId) throws IOException {
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("请上传有效的图片文件");
+            throw new BusinessException("请上传有效的图片文件");
         }
 
         if (file.getSize() > 5 * 1024 * 1024) {
-            throw new IllegalArgumentException("图片大小不能超过5MB");
+            throw new BusinessException("图片大小不能超过5MB");
         }
 
         String extension = getFileExtension(contentType);

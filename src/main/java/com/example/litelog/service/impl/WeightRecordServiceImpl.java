@@ -3,11 +3,10 @@ package com.example.litelog.service.impl;
 import com.example.litelog.dto.request.WeightRecordRequest;
 import com.example.litelog.dto.request.WeightRecordSyncRequest;
 import com.example.litelog.dto.response.WeightRecordSyncResponse;
-import com.example.litelog.entity.User;
 import com.example.litelog.entity.WeightRecord;
 import com.example.litelog.exception.BusinessException;
-import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
+import com.example.litelog.service.UserIdentifierService;
 import com.example.litelog.service.WeightRecordService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +26,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -36,11 +34,11 @@ public class WeightRecordServiceImpl implements WeightRecordService {
     private static final Logger log = LoggerFactory.getLogger(WeightRecordServiceImpl.class);
 
     private final WeightRecordRepository weightRecordRepository;
-    private final UserRepository userRepository;
+    private final UserIdentifierService userIdentifierService;
 
-    public WeightRecordServiceImpl(WeightRecordRepository weightRecordRepository, UserRepository userRepository) {
+    public WeightRecordServiceImpl(WeightRecordRepository weightRecordRepository, UserIdentifierService userIdentifierService) {
         this.weightRecordRepository = weightRecordRepository;
-        this.userRepository = userRepository;
+        this.userIdentifierService = userIdentifierService;
     }
 
     @Value("${record.image.upload.path:./uploads/records}")
@@ -50,47 +48,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
     private String imageBaseUrl;
 
     private Long getUserId(String userId, String idType) {
-        if (userId == null || userId.isEmpty()) {
-            return 1L;
-        }
-
-        Optional<User> existingUser = findUserByIdentifier(userId, idType);
-        if (existingUser.isPresent()) {
-            return existingUser.get().getId();
-        }
-
-        User newUser = User.builder()
-                .nickname("用户")
-                .build();
-
-        switch (idType) {
-            case "device":
-                newUser.setDeviceId(userId);
-                break;
-            case "custom_phone":
-                newUser.setCustomPhone(userId);
-                break;
-            case "custom_email":
-                newUser.setCustomEmail(userId);
-                break;
-            default:
-                newUser.setDeviceId(userId);
-        }
-
-        return userRepository.save(newUser).getId();
-    }
-
-    private Optional<User> findUserByIdentifier(String userId, String idType) {
-        switch (idType) {
-            case "device":
-                return userRepository.findByDeviceId(userId);
-            case "custom_phone":
-                return userRepository.findByCustomPhone(userId);
-            case "custom_email":
-                return userRepository.findByCustomEmail(userId);
-            default:
-                return userRepository.findByDeviceId(userId);
-        }
+        return userIdentifierService.getOrCreateUserId(userId, idType);
     }
 
     @Override

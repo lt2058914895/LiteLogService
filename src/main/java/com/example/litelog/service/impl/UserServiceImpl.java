@@ -10,6 +10,7 @@ import com.example.litelog.exception.BusinessException;
 import com.example.litelog.repository.UserProfileRepository;
 import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
+import com.example.litelog.service.UserIdentifierService;
 import com.example.litelog.service.UserService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -24,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -34,86 +34,27 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final WeightRecordRepository weightRecordRepository;
+    private final UserIdentifierService userIdentifierService;
 
-    public UserServiceImpl(UserRepository userRepository, UserProfileRepository userProfileRepository, WeightRecordRepository weightRecordRepository) {
+    public UserServiceImpl(UserRepository userRepository, UserProfileRepository userProfileRepository, WeightRecordRepository weightRecordRepository, UserIdentifierService userIdentifierService) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.weightRecordRepository = weightRecordRepository;
+        this.userIdentifierService = userIdentifierService;
     }
 
     @Override
     @Transactional
     public Long getOrCreateUserId(String userId, String idType) {
-        if (userId == null || userId.isEmpty()) {
-            log.warn("用户ID为空，使用默认用户");
-            return getOrCreateDefaultUser().getId();
-        }
-
-        Optional<User> existingUser = findUserByIdentifier(userId, idType);
-        if (existingUser.isPresent()) {
-            log.info("找到已有用户：id={}, type={}, userId={}", userId, idType, existingUser.get().getId());
-            return existingUser.get().getId();
-        }
-
-        User newUser = User.builder()
-                .phone(generateUniquePhone())
-                .password("")
-                .nickname("用户")
-                .build();
-
-        if ("device".equals(idType)) {
-            newUser.setDeviceId(userId);
-        }
-
-        User savedUser = userRepository.save(newUser);
-        
-        getOrCreateUserProfile(savedUser.getId());
-        
-        log.info("创建新用户：id={}, type={}, userId={}", userId, idType, savedUser.getId());
-        return savedUser.getId();
-    }
-
-    private Optional<User> findUserByIdentifier(String userId, String idType) {
-        if ("device".equals(idType)) {
-            return userRepository.findByDeviceId(userId);
-        }
-        return userRepository.findByDeviceId(userId);
+        Long userIdValue = userIdentifierService.getOrCreateUserId(userId, idType);
+        getOrCreateUserProfile(userIdValue);
+        return userIdValue;
     }
 
     private User getUserByIdentifier(String userId, String idType) {
-        if (userId == null || userId.isEmpty()) {
-            return getOrCreateDefaultUser();
-        }
-
-        Optional<User> existingUser = findUserByIdentifier(userId, idType);
-        if (existingUser.isPresent()) {
-            return existingUser.get();
-        }
-
-        return getOrCreateDefaultUser();
-    }
-
-    private String generateUniquePhone() {
-        String phone;
-        do {
-            phone = "user_" + UUID.randomUUID().toString().substring(0, 10);
-        } while (userRepository.existsByPhone(phone));
-        return phone;
-    }
-
-    private User getOrCreateDefaultUser() {
-        Optional<User> existingUser = userRepository.findById(1L);
-        if (existingUser.isPresent()) {
-            return existingUser.get();
-        }
-
-        User newUser = User.builder()
-                .id(1L)
-                .phone("default_user")
-                .password("")
-                .nickname("用户")
-                .build();
-        return userRepository.save(newUser);
+        Long userIdValue = userIdentifierService.getOrCreateUserId(userId, idType);
+        return userRepository.findById(userIdValue)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
     }
 
     private UserProfile getOrCreateUserProfile(Long userId) {

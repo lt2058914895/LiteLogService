@@ -157,6 +157,12 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     java.time.Instant.ofEpochSecond(request.getDate()),
                     ZoneId.systemDefault()));
             existingRecord.setUpdatedAt(clientUpdatedAt);
+            
+            if (Boolean.TRUE.equals(request.getDeleteImage())) {
+                deleteRecordImage(existingRecord.getImageUrl());
+                existingRecord.setImageUrl(null);
+            }
+            
             weightRecordRepository.save(existingRecord);
             return true;
         }).orElse(false);
@@ -198,17 +204,28 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             ensureUploadDirectoryExists();
             Map<String, MultipartFile> fileMap = buildFileMap(files);
             List<String> syncedRecordIds = new ArrayList<>();
+            List<WeightRecordSyncResponse.SyncedRecord> syncedRecords = new ArrayList<>();
 
             for (WeightRecordRequest recordRequest : request.getRecords()) {
                 try {
+                    String imageUrl = null;
                     if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
                         deleteRecord(recordRequest.getRecordId());
                     } else if (weightRecordRepository.existsByRecordId(recordRequest.getRecordId())) {
                         updateRecordWithImage(recordRequest, fileMap);
+                        imageUrl = weightRecordRepository.findByRecordId(recordRequest.getRecordId())
+                                .map(WeightRecord::getImageUrl)
+                                .orElse(null);
                     } else {
                         createRecordWithImage(recordRequest, fileMap, userIdValue);
+                        imageUrl = weightRecordRepository.findByRecordId(recordRequest.getRecordId())
+                                .map(WeightRecord::getImageUrl)
+                                .orElse(null);
                     }
                     syncedRecordIds.add(recordRequest.getRecordId());
+                    if (imageUrl != null) {
+                        syncedRecords.add(new WeightRecordSyncResponse.SyncedRecord(recordRequest.getRecordId(), imageUrl));
+                    }
                 } catch (Exception e) {
                     log.warn("同步记录失败：{}, 错误：{}", recordRequest.getRecordId(), e.getMessage());
                 }
@@ -221,6 +238,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                     .message("同步成功")
                     .syncedCount(syncedRecordIds.size())
                     .syncedRecordIds(syncedRecordIds)
+                    .syncedRecords(syncedRecords)
                     .build();
 
         } catch (Exception e) {

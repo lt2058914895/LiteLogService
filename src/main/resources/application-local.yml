@@ -1,6 +1,13 @@
 server:
   port: 8080
 
+record:
+  image:
+    upload:
+      path: ./uploads/records
+    base:
+      url: http://10.226.220.119:8080/api/record-images
+
 spring:
   datasource:
     url: jdbc:mysql://rm-uf6503kxd51m95x27po.mysql.rds.aliyuncs.com:3306/litelog_dev?useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8

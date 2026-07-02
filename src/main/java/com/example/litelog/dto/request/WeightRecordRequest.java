@@ -39,6 +39,8 @@ public class WeightRecordRequest {
 
     private String imageFileName;
 
+    private Boolean deleteImage = false;
+
     public WeightRecordRequest() {
     }
 
@@ -181,5 +183,13 @@ public class WeightRecordRequest {
 
     public void setImageFileName(String imageFileName) {
         this.imageFileName = imageFileName;
+    }
+
+    public Boolean getDeleteImage() {
+        return deleteImage;
+    }
+
+    public void setDeleteImage(Boolean deleteImage) {
+        this.deleteImage = deleteImage;
     }
 }

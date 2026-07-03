@@ -9,7 +9,6 @@ public class WeightRecordSyncResponse {
     private int syncedCount;
     private List<String> syncedRecordIds;
     private List<String> conflictRecordIds;
-    private List<SyncedRecord> syncedRecords;
 
     public WeightRecordSyncResponse() {
     }
@@ -27,15 +26,6 @@ public class WeightRecordSyncResponse {
         this.syncedCount = syncedCount;
         this.syncedRecordIds = syncedRecordIds;
         this.conflictRecordIds = conflictRecordIds;
-    }
-
-    public WeightRecordSyncResponse(boolean success, String message, int syncedCount, List<String> syncedRecordIds, List<String> conflictRecordIds, List<SyncedRecord> syncedRecords) {
-        this.success = success;
-        this.message = message;
-        this.syncedCount = syncedCount;
-        this.syncedRecordIds = syncedRecordIds;
-        this.conflictRecordIds = conflictRecordIds;
-        this.syncedRecords = syncedRecords;
     }
 
     public static WeightRecordSyncResponseBuilder builder() {
@@ -82,38 +72,12 @@ public class WeightRecordSyncResponse {
         this.conflictRecordIds = conflictRecordIds;
     }
 
-    public List<SyncedRecord> getSyncedRecords() {
-        return syncedRecords;
-    }
-
-    public void setSyncedRecords(List<SyncedRecord> syncedRecords) {
-        this.syncedRecords = syncedRecords;
-    }
-
-    public static class SyncedRecord {
-        private String recordId;
-        private String imageUrl;
-
-        public SyncedRecord() {}
-
-        public SyncedRecord(String recordId, String imageUrl) {
-            this.recordId = recordId;
-            this.imageUrl = imageUrl;
-        }
-
-        public String getRecordId() { return recordId; }
-        public void setRecordId(String recordId) { this.recordId = recordId; }
-        public String getImageUrl() { return imageUrl; }
-        public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-    }
-
     public static class WeightRecordSyncResponseBuilder {
         private boolean success;
         private String message;
         private int syncedCount;
         private List<String> syncedRecordIds;
         private List<String> conflictRecordIds;
-        private List<SyncedRecord> syncedRecords;
 
         public WeightRecordSyncResponseBuilder success(boolean success) {
             this.success = success;
@@ -140,13 +104,8 @@ public class WeightRecordSyncResponse {
             return this;
         }
 
-        public WeightRecordSyncResponseBuilder syncedRecords(List<SyncedRecord> syncedRecords) {
-            this.syncedRecords = syncedRecords;
-            return this;
-        }
-
         public WeightRecordSyncResponse build() {
-            return new WeightRecordSyncResponse(success, message, syncedCount, syncedRecordIds, conflictRecordIds, syncedRecords);
+            return new WeightRecordSyncResponse(success, message, syncedCount, syncedRecordIds, conflictRecordIds);
         }
     }
 }

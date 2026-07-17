@@ -42,75 +42,99 @@ jobs:
         port: 22
         timeout: 240s
         script: |
-          APP_DIR="/opt/app/litelog-backend"
-          LOG_FILE="$APP_DIR/app.log"
-          
-          echo "=== DEPLOYMENT START ==="
-          
-          cd "$APP_DIR"
-          
-          # Find JAR file
-          JAR_FILE=$(find . -name "*.jar" -type f 2>/dev/null | head -1)
-          
-          if [ -z "$JAR_FILE" ]; then
-              echo "ERROR: JAR file not found!"
-              exit 1
-          fi
-          
-          echo "Found JAR: $JAR_FILE"
-          
-          # Stop service using PID file if exists
-          if [ -f "$APP_DIR/app.pid" ]; then
-              OLD_PID=$(cat "$APP_DIR/app.pid")
-              if ps -p "$OLD_PID" > /dev/null 2>&1; then
-                  echo "Stopping old service (PID: $OLD_PID)..."
-                  kill "$OLD_PID" 2>/dev/null || true
-                  sleep 3
-              fi
-          fi
-          
-          # Stop any process on port 8080 using fuser
-          if command -v fuser > /dev/null; then
-              fuser -k 8080/tcp 2>/dev/null || true
-              sleep 2
-          fi
-          
-          # Clear old logs
-          > "$LOG_FILE"
-          
-          # Start service
-          echo "Starting service..."
-          nohup java -jar "$JAR_FILE" --spring.profiles.active=prod --server.port=8080 > "$LOG_FILE" 2>&1 &
-          
-          # Save PID
-          NEW_PID=$!
-          echo "$NEW_PID" > "$APP_DIR/app.pid"
-          echo "Started with PID: $NEW_PID"
-          
-          # Wait for startup
-          echo "Waiting 30 seconds for service to start..."
-          for i in {1..30}; do
-              sleep 1
-              echo -n "."
-              if ss -tlnp | grep ':8080' | grep -q LISTEN; then
-                  echo ""
-                  echo "✅ Port 8080 is now listening!"
-                  break
-              fi
-          done
-          echo ""
-          
-          # Final check
-          echo "Checking service status..."
-          if ss -tlnp | grep ':8080' | grep -q LISTEN; then
-              echo "=== DEPLOYMENT SUCCESS ==="
-              echo "Service running on port 8080"
-              echo ""
-              echo "📝 Last 20 lines of logs:"
-              tail -20 "$LOG_FILE"
-          else
-              echo "=== DEPLOYMENT FAILED ==="
-              echo "📝 Full application logs:"
-              tail -100 "$LOG_FILE"
-              exit 1
-          fi
+          powershell -Command "
+            \$APP_DIR = '/opt/app/litelog-backend'
+            \$LOG_FILE = Join-Path \$APP_DIR 'app.log'
+            \$PID_FILE = Join-Path \$APP_DIR 'app.pid'
+            
+            Write-Host '=== DEPLOYMENT START ==='
+            
+            Set-Location \$APP_DIR
+            
+            \$jarFiles = Get-ChildItem -Path \$APP_DIR -Filter '*.jar' -File
+            if (-not \$jarFiles) {
+                Write-Host 'ERROR: JAR file not found!'
+                exit 1
+            }
+            \$JAR_FILE = \$jarFiles[0].FullName
+            Write-Host \"Found JAR: \$JAR_FILE\"
+            
+            if (Test-Path \$PID_FILE) {
+                \$OLD_PID = Get-Content \$PID_FILE -Raw
+                \$oldProcess = Get-Process -Id \$OLD_PID -ErrorAction SilentlyContinue
+                if (\$oldProcess) {
+                    Write-Host \"Stopping old service (PID: \$OLD_PID)...\"
+                    \$oldProcess | Stop-Process -Force
+                    Start-Sleep -Seconds 3
+                }
+            }
+            
+            \$portProcesses = Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
+            foreach (\$pid in \$portProcesses) {
+                \$proc = Get-Process -Id \$pid -ErrorAction SilentlyContinue
+                if (\$proc) {
+                    Write-Host \"Stopping process on port 8080 (PID: \$pid)...\"
+                    \$proc | Stop-Process -Force
+                    Start-Sleep -Seconds 2
+                }
+            }
+            
+            if (Test-Path \$LOG_FILE) {
+                Clear-Content \$LOG_FILE
+            }
+            
+            Write-Host 'Starting service...'
+            \$javaPath = (Get-Command java -ErrorAction SilentlyContinue).Source
+            if (-not \$javaPath) {
+                \$javaPath = 'java'
+            }
+            
+            \$startInfo = New-Object System.Diagnostics.ProcessStartInfo
+            \$startInfo.FileName = \$javaPath
+            \$startInfo.Arguments = \"-jar `"\$JAR_FILE`" --spring.profiles.active=prod --server.port=8080\"
+            \$startInfo.WorkingDirectory = \$APP_DIR
+            \$startInfo.RedirectStandardOutput = \$true
+            \$startInfo.RedirectStandardError = \$true
+            \$startInfo.UseShellExecute = \$false
+            \$startInfo.CreateNoWindow = \$true
+            
+            \$process = New-Object System.Diagnostics.Process
+            \$process.StartInfo = \$startInfo
+            \$process.Start() | Out-Null
+            
+            \$NEW_PID = \$process.Id
+            Write-Host \"Started with PID: \$NEW_PID\"
+            \$NEW_PID | Set-Content \$PID_FILE
+            
+            Write-Host 'Waiting 30 seconds for service to start...'
+            \$started = \$false
+            for (\$i = 1; \$i -le 30; \$i++) {
+                Start-Sleep -Seconds 1
+                Write-Host -NoNewline '.'
+                \$listener = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
+                if (\$listener) {
+                    Write-Host ''
+                    Write-Host '✅ Port 8080 is now listening!'
+                    \$started = \$true
+                    break
+                }
+            }
+            Write-Host ''
+            
+            if (\$started) {
+                Write-Host '=== DEPLOYMENT SUCCESS ==='
+                Write-Host 'Service running on port 8080'
+                Write-Host ''
+                Write-Host '📝 Last 20 lines of logs:'
+                if (Test-Path \$LOG_FILE) {
+                    Get-Content \$LOG_FILE | Select-Object -Last 20
+                }
+            } else {
+                Write-Host '=== DEPLOYMENT FAILED ==='
+                Write-Host '📝 Full application logs:'
+                if (Test-Path \$LOG_FILE) {
+                    Get-Content \$LOG_FILE
+                }
+                exit 1
+            }
+          "

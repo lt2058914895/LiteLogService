@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -260,7 +261,7 @@ public class UserServiceImpl implements UserService {
 
             List<Map<String, Object>> recordsData = records.stream().map(record -> {
                 Map<String, Object> recordMap = new HashMap<>();
-                recordMap.put("recordId", record.getId());
+                recordMap.put("recordId", record.getRecordId());
                 recordMap.put("weight", record.getWeight());
                 recordMap.put("bodyFatPercentage", record.getBodyFatPercentage());
                 recordMap.put("waistCircumference", record.getWaistCircumference());
@@ -268,9 +269,9 @@ public class UserServiceImpl implements UserService {
                 recordMap.put("chestCircumference", record.getChestCircumference());
                 recordMap.put("thighCircumference", record.getThighCircumference());
                 recordMap.put("note", record.getNote());
-                recordMap.put("date", record.getDate());
-                recordMap.put("createdAt", record.getCreatedAt());
-                recordMap.put("updatedAt", record.getUpdatedAt());
+                recordMap.put("date", record.getDate() != null ? record.getDate().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
+                recordMap.put("createdAt", record.getCreatedAt() != null ? record.getCreatedAt().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
+                recordMap.put("updatedAt", record.getUpdatedAt() != null ? record.getUpdatedAt().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
                 recordMap.put("imageUrl", record.getImageUrl());
                 recordMap.put("measurementTimePeriod", record.getMeasurementTimePeriod());
                 return recordMap;

@@ -17,4 +17,6 @@ public interface WeightRecordRepository extends JpaRepository<WeightRecord, Long
     List<WeightRecord> findByUserId(Long userId);
     
     boolean existsByRecordId(String recordId);
+    
+    List<WeightRecord> findAllByRecordIdIn(List<String> recordIds);
 }

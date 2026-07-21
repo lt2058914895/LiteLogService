@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class WeightRecordServiceImpl implements WeightRecordService {
@@ -51,6 +53,10 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         return userIdentifierService.getOrCreateUserId(userId, idType);
     }
 
+    private LocalDateTime toLocalDateTime(Long epochSecond) {
+        return LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSecond), ZoneId.systemDefault());
+    }
+
     @Override
     @Transactional
     public WeightRecordSyncResponse syncRecords(String userId, String idType, WeightRecordSyncRequest request) {
@@ -59,20 +65,36 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             List<String> syncedRecordIds = new ArrayList<>();
             List<String> conflictRecordIds = new ArrayList<>();
 
+            // 批量查询所有已存在的记录，消除 N+1 查询
+            List<String> recordIds = request.getRecords().stream()
+                    .map(WeightRecordRequest::getRecordId)
+                    .toList();
+            Map<String, WeightRecord> existingRecordMap = weightRecordRepository.findAllByRecordIdIn(recordIds)
+                    .stream()
+                    .collect(Collectors.toMap(WeightRecord::getRecordId, r -> r));
+
             for (WeightRecordRequest recordRequest : request.getRecords()) {
                 try {
                     if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
-                        deleteRecord(recordRequest.getRecordId());
-                        syncedRecordIds.add(recordRequest.getRecordId());
-                    } else if (weightRecordRepository.existsByRecordId(recordRequest.getRecordId())) {
-                        if (updateRecordWithConflictCheck(recordRequest)) {
-                            syncedRecordIds.add(recordRequest.getRecordId());
-                        } else {
-                            conflictRecordIds.add(recordRequest.getRecordId());
+                        WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
+                        if (existingRecord != null) {
+                            deleteRecordImage(existingRecord.getImageUrl());
+                            weightRecordRepository.delete(existingRecord);
+                            log.info("删除体重记录：{}", recordRequest.getRecordId());
                         }
-                    } else {
-                        createRecord(recordRequest, userIdValue);
                         syncedRecordIds.add(recordRequest.getRecordId());
+                    } else {
+                        WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
+                        if (existingRecord != null) {
+                            if (updateRecordWithConflictCheck(recordRequest, existingRecord)) {
+                                syncedRecordIds.add(recordRequest.getRecordId());
+                            } else {
+                                conflictRecordIds.add(recordRequest.getRecordId());
+                            }
+                        } else {
+                            createRecord(recordRequest, userIdValue);
+                            syncedRecordIds.add(recordRequest.getRecordId());
+                        }
                     }
                 } catch (Exception e) {
                     log.warn("同步记录失败：{}, 错误：{}", recordRequest.getRecordId(), e.getMessage());
@@ -118,82 +140,46 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .thighCircumference(request.getThighCircumference())
                 .measurementTimePeriod(request.getMeasurementTimePeriod())
                 .note(request.getNote())
-                .date(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochSecond(request.getDate()),
-                        ZoneId.systemDefault()))
-                .createdAt(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochSecond(request.getCreatedAt()),
-                        ZoneId.systemDefault()))
-                .updatedAt(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
-                        ZoneId.systemDefault()))
+                .date(toLocalDateTime(request.getDate()))
+                .createdAt(toLocalDateTime(request.getCreatedAt()))
+                .updatedAt(toLocalDateTime(request.getUpdatedAt()))
                 .build();
 
         weightRecordRepository.save(record);
     }
 
-    private boolean updateRecordWithConflictCheck(WeightRecordRequest request) {
-        return weightRecordRepository.findByRecordId(request.getRecordId()).map(existingRecord -> {
-            LocalDateTime serverUpdatedAt = existingRecord.getUpdatedAt();
-            LocalDateTime clientUpdatedAt = LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
-                    ZoneId.systemDefault());
+    private boolean updateRecordWithConflictCheck(WeightRecordRequest request, WeightRecord existingRecord) {
+        LocalDateTime serverUpdatedAt = existingRecord.getUpdatedAt();
+        LocalDateTime clientUpdatedAt = toLocalDateTime(request.getUpdatedAt());
 
-            if (serverUpdatedAt.isAfter(clientUpdatedAt)) {
-                log.info("记录存在冲突，跳过更新：recordId={}, serverUpdatedAt={}, clientUpdatedAt={}", 
-                        request.getRecordId(), serverUpdatedAt, clientUpdatedAt);
-                return false;
-            }
+        if (serverUpdatedAt.isAfter(clientUpdatedAt)) {
+            log.info("记录存在冲突，跳过更新：recordId={}, serverUpdatedAt={}, clientUpdatedAt={}", 
+                    request.getRecordId(), serverUpdatedAt, clientUpdatedAt);
+            return false;
+        }
 
-            existingRecord.setWeight(request.getWeight());
-            existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
-            existingRecord.setWaistCircumference(request.getWaistCircumference());
-            existingRecord.setHipCircumference(request.getHipCircumference());
-            existingRecord.setChestCircumference(request.getChestCircumference());
-            existingRecord.setThighCircumference(request.getThighCircumference());
-            existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
-            existingRecord.setNote(request.getNote());
-            existingRecord.setDate(LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochSecond(request.getDate()),
-                    ZoneId.systemDefault()));
-            existingRecord.setUpdatedAt(clientUpdatedAt);
-            
-            if (Boolean.TRUE.equals(request.getDeleteImage())) {
-                deleteRecordImage(existingRecord.getImageUrl());
-                existingRecord.setImageUrl(null);
-            }
-            
-            weightRecordRepository.save(existingRecord);
-            return true;
-        }).orElse(false);
-    }
+        updateRecordFields(existingRecord, request);
 
-    private void updateRecord(WeightRecordRequest request) {
-        weightRecordRepository.findByRecordId(request.getRecordId()).ifPresent(existingRecord -> {
-            existingRecord.setWeight(request.getWeight());
-            existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
-            existingRecord.setWaistCircumference(request.getWaistCircumference());
-            existingRecord.setHipCircumference(request.getHipCircumference());
-            existingRecord.setChestCircumference(request.getChestCircumference());
-            existingRecord.setThighCircumference(request.getThighCircumference());
-            existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
-            existingRecord.setNote(request.getNote());
-            existingRecord.setDate(LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochSecond(request.getDate()),
-                    ZoneId.systemDefault()));
-            existingRecord.setUpdatedAt(LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
-                    ZoneId.systemDefault()));
-            weightRecordRepository.save(existingRecord);
-        });
-    }
-
-    private void deleteRecord(String recordId) {
-        weightRecordRepository.findByRecordId(recordId).ifPresent(existingRecord -> {
+        if (Boolean.TRUE.equals(request.getDeleteImage())) {
             deleteRecordImage(existingRecord.getImageUrl());
-            weightRecordRepository.delete(existingRecord);
-            log.info("删除体重记录：{}", recordId);
-        });
+            existingRecord.setImageUrl(null);
+        }
+        
+        weightRecordRepository.save(existingRecord);
+        return true;
+    }
+
+    private void updateRecordFields(WeightRecord existingRecord, WeightRecordRequest request) {
+        existingRecord.setWeight(request.getWeight());
+        existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
+        existingRecord.setWaistCircumference(request.getWaistCircumference());
+        existingRecord.setHipCircumference(request.getHipCircumference());
+        existingRecord.setChestCircumference(request.getChestCircumference());
+        existingRecord.setThighCircumference(request.getThighCircumference());
+        existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
+        existingRecord.setNote(request.getNote());
+        existingRecord.setDate(toLocalDateTime(request.getDate()));
+        existingRecord.setUpdatedAt(toLocalDateTime(request.getUpdatedAt()));
     }
 
     @Override
@@ -206,21 +192,31 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             List<String> syncedRecordIds = new ArrayList<>();
             List<WeightRecordSyncResponse.SyncedRecord> syncedRecords = new ArrayList<>();
 
+            // 批量查询所有已存在的记录，消除 N+1 查询
+            List<String> recordIds = request.getRecords().stream()
+                    .map(WeightRecordRequest::getRecordId)
+                    .toList();
+            Map<String, WeightRecord> existingRecordMap = weightRecordRepository.findAllByRecordIdIn(recordIds)
+                    .stream()
+                    .collect(Collectors.toMap(WeightRecord::getRecordId, r -> r));
+
             for (WeightRecordRequest recordRequest : request.getRecords()) {
                 try {
                     String imageUrl = null;
                     if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
-                        deleteRecord(recordRequest.getRecordId());
-                    } else if (weightRecordRepository.existsByRecordId(recordRequest.getRecordId())) {
-                        updateRecordWithImage(recordRequest, fileMap);
-                        imageUrl = weightRecordRepository.findByRecordId(recordRequest.getRecordId())
-                                .map(WeightRecord::getImageUrl)
-                                .orElse(null);
+                        WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
+                        if (existingRecord != null) {
+                            deleteRecordImage(existingRecord.getImageUrl());
+                            weightRecordRepository.delete(existingRecord);
+                            log.info("删除体重记录：{}", recordRequest.getRecordId());
+                        }
                     } else {
-                        createRecordWithImage(recordRequest, fileMap, userIdValue);
-                        imageUrl = weightRecordRepository.findByRecordId(recordRequest.getRecordId())
-                                .map(WeightRecord::getImageUrl)
-                                .orElse(null);
+                        WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
+                        if (existingRecord != null) {
+                            imageUrl = updateRecordWithImage(recordRequest, existingRecord, fileMap);
+                        } else {
+                            imageUrl = createRecordWithImage(recordRequest, fileMap, userIdValue);
+                        }
                     }
                     syncedRecordIds.add(recordRequest.getRecordId());
                     if (imageUrl != null) {
@@ -252,7 +248,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
     }
 
-    private void createRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap, Long userId) throws IOException {
+    private String createRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap, Long userId) throws IOException {
         WeightRecord record = WeightRecord.builder()
                 .userId(userId)
                 .recordId(request.getRecordId())
@@ -264,15 +260,9 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .thighCircumference(request.getThighCircumference())
                 .measurementTimePeriod(request.getMeasurementTimePeriod())
                 .note(request.getNote())
-                .date(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochSecond(request.getDate()),
-                        ZoneId.systemDefault()))
-                .createdAt(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochSecond(request.getCreatedAt()),
-                        ZoneId.systemDefault()))
-                .updatedAt(LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
-                        ZoneId.systemDefault()))
+                .date(toLocalDateTime(request.getDate()))
+                .createdAt(toLocalDateTime(request.getCreatedAt()))
+                .updatedAt(toLocalDateTime(request.getUpdatedAt()))
                 .build();
 
         String imageFileName = request.getImageFileName();
@@ -282,38 +272,21 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
 
         weightRecordRepository.save(record);
+        return record.getImageUrl();
     }
 
-    private void updateRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap) throws IOException {
-        weightRecordRepository.findByRecordId(request.getRecordId()).ifPresent(existingRecord -> {
-            existingRecord.setWeight(request.getWeight());
-            existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
-            existingRecord.setWaistCircumference(request.getWaistCircumference());
-            existingRecord.setHipCircumference(request.getHipCircumference());
-            existingRecord.setChestCircumference(request.getChestCircumference());
-            existingRecord.setThighCircumference(request.getThighCircumference());
-            existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
-            existingRecord.setNote(request.getNote());
-            existingRecord.setDate(LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochSecond(request.getDate()),
-                    ZoneId.systemDefault()));
-            existingRecord.setUpdatedAt(LocalDateTime.ofInstant(
-                    java.time.Instant.ofEpochSecond(request.getUpdatedAt()),
-                    ZoneId.systemDefault()));
+    private String updateRecordWithImage(WeightRecordRequest request, WeightRecord existingRecord, Map<String, MultipartFile> fileMap) throws IOException {
+        updateRecordFields(existingRecord, request);
 
-            String imageFileName = request.getImageFileName();
-            try {
-                if (imageFileName != null && !imageFileName.isEmpty() && fileMap.containsKey(imageFileName)) {
-                    deleteRecordImage(existingRecord.getImageUrl());
-                    String imageUrl = saveImage(fileMap.get(imageFileName), request.getRecordId());
-                    existingRecord.setImageUrl(imageUrl);
-                }
-            } catch (IOException e) {
-                log.warn("更新记录图片失败：{}", e.getMessage());
-            }
+        String imageFileName = request.getImageFileName();
+        if (imageFileName != null && !imageFileName.isEmpty() && fileMap.containsKey(imageFileName)) {
+            deleteRecordImage(existingRecord.getImageUrl());
+            String imageUrl = saveImage(fileMap.get(imageFileName), request.getRecordId());
+            existingRecord.setImageUrl(imageUrl);
+        }
 
-            weightRecordRepository.save(existingRecord);
-        });
+        weightRecordRepository.save(existingRecord);
+        return existingRecord.getImageUrl();
     }
 
     private void ensureUploadDirectoryExists() throws IOException {

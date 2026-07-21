@@ -253,11 +253,15 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         return existingRecord.getImageUrl();
     }
 
-    private void ensureUploadDirectoryExists() throws IOException {
+    private void ensureUploadDirectoryExists() {
         Path uploadDir = Paths.get(imageUploadPath);
         if (!Files.exists(uploadDir)) {
-            Files.createDirectories(uploadDir);
-            log.info("创建记录图片上传目录：{}", uploadDir.toAbsolutePath());
+            try {
+                Files.createDirectories(uploadDir);
+                log.info("创建记录图片上传目录：{}", uploadDir.toAbsolutePath());
+            } catch (IOException e) {
+                throw new BusinessException("创建上传目录失败");
+            }
         }
     }
 

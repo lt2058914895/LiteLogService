@@ -14,5 +14,5 @@ public interface UserService {
     
     Long getOrCreateUserId(String userId, String idType);
     
-    Object fetchAllData(String userId, String idType);
+    Object fetchAllData(String userId, String idType, Integer page, Integer size);
 }

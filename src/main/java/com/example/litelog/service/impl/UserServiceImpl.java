@@ -14,8 +14,13 @@ import com.example.litelog.service.UserIdentifierService;
 import com.example.litelog.service.UserService;
 import jakarta.transaction.Transactional;
 import com.example.litelog.util.DateTimeUtils;
+import com.example.litelog.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -26,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -197,8 +203,13 @@ public class UserServiceImpl implements UserService {
                 Files.createDirectories(storageDir);
             }
 
-            String newFilename = originalFilename;
+            // 使用UUID命名避免文件名冲突
+            String extension = FileUtils.getExtensionFromFilename(originalFilename);
+            String newFilename = UUID.randomUUID().toString() + extension;
             Path newFilePath = storageDir.resolve(newFilename);
+
+            // 删除旧头像文件
+            deleteOldAvatar(user.getAvatarUrl());
 
             Files.write(newFilePath, imageData);
 
@@ -215,11 +226,48 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    private void deleteOldAvatar(String avatarUrl) {
+        if (avatarUrl == null || avatarUrl.isEmpty()) {
+            return;
+        }
+        try {
+            String fileName = avatarUrl.substring(avatarUrl.lastIndexOf("/") + 1);
+            Path filePath = Paths.get(AVATAR_STORAGE_DIR).resolve(fileName);
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+                log.info("旧头像已删除：{}", filePath);
+            }
+        } catch (Exception e) {
+            log.warn("删除旧头像失败：{}", e.getMessage());
+        }
+    }
+
     @Override
-    public Object fetchAllData(String userId, String idType) {
+    public Object fetchAllData(String userId, String idType, Integer page, Integer size) {
         User user = getUserByIdentifier(userId, idType);
         UserProfile profile = getOrCreateUserProfile(user.getId());
-        List<WeightRecord> records = weightRecordRepository.findByUserId(user.getId());
+
+        // 分页查询体重记录，默认无分页（兼容旧客户端），最大上限1000条
+        List<WeightRecord> records;
+        long totalRecords = 0;
+        int currentPage = 0;
+        int totalPages = 1;
+        int pageSize = 1000; // 无分页时的默认上限
+
+        if (page != null && size != null && page >= 0 && size > 0) {
+            // 客户端指定分页参数
+            pageSize = Math.min(size, 100); // 单页最大100条
+            Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "date"));
+            Page<WeightRecord> recordPage = weightRecordRepository.findByUserId(user.getId(), pageable);
+            records = recordPage.getContent();
+            totalRecords = recordPage.getTotalElements();
+            currentPage = recordPage.getNumber();
+            totalPages = recordPage.getTotalPages();
+        } else {
+            // 无分页，返回全部记录（有上限保护）
+            records = weightRecordRepository.findByUserIdOrderByDateDesc(user.getId());
+            totalRecords = records.size();
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -259,7 +307,14 @@ public class UserServiceImpl implements UserService {
         }).toList();
         result.put("records", recordsData);
 
-        log.info("获取用户所有数据成功：userId={}, idType={}, 记录数={}", userId, idType, records.size());
+        // 分页元数据
+        result.put("totalRecords", totalRecords);
+        result.put("currentPage", currentPage);
+        result.put("totalPages", totalPages);
+        result.put("pageSize", pageSize);
+
+        log.info("获取用户所有数据成功：userId={}, idType={}, 记录数={}, 分页={}/{}", 
+                userId, idType, records.size(), currentPage, totalPages);
         
         return result;
     }

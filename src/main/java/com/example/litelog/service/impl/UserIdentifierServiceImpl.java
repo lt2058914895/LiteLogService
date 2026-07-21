@@ -6,6 +6,7 @@ import com.example.litelog.service.UserIdentifierService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -22,6 +23,8 @@ public class UserIdentifierServiceImpl implements UserIdentifierService {
         this.userRepository = userRepository;
     }
 
+    private static final int MAX_CREATE_RETRY = 3;
+
     @Override
     @Transactional
     public Long getOrCreateUserId(String userId, String idType) {
@@ -36,28 +39,51 @@ public class UserIdentifierServiceImpl implements UserIdentifierService {
             return existingUser.get().getId();
         }
 
-        User newUser = User.builder()
-                .phone(generateUniquePhone())
+        // 使用数据库唯一约束 + 重试替代 while 循环，避免高并发下潜在死循环
+        for (int i = 0; i < MAX_CREATE_RETRY; i++) {
+            try {
+                User newUser = User.builder()
+                        .phone(generatePhone())
+                        .password("")
+                        .nickname("用户")
+                        .build();
+
+                switch (idType) {
+                    case "device":
+                        newUser.setDeviceId(userId);
+                        break;
+                    case "custom_phone":
+                        newUser.setCustomPhone(userId);
+                        break;
+                    case "custom_email":
+                        newUser.setCustomEmail(userId);
+                        break;
+                    default:
+                        newUser.setDeviceId(userId);
+                }
+
+                User savedUser = userRepository.saveAndFlush(newUser);
+                log.info("创建新用户：id={}, type={}, userId={}", userId, idType, savedUser.getId());
+                return savedUser.getId();
+            } catch (DataIntegrityViolationException e) {
+                log.warn("创建用户时phone冲突，重试({}/{}): userId={}, idType={}", i + 1, MAX_CREATE_RETRY, userId, idType);
+            }
+        }
+
+        // 极端情况：多次重试仍冲突，用完整UUID确保唯一
+        User fallbackUser = User.builder()
+                .phone("user_" + UUID.randomUUID().toString())
                 .password("")
                 .nickname("用户")
                 .build();
-
         switch (idType) {
-            case "device":
-                newUser.setDeviceId(userId);
-                break;
-            case "custom_phone":
-                newUser.setCustomPhone(userId);
-                break;
-            case "custom_email":
-                newUser.setCustomEmail(userId);
-                break;
-            default:
-                newUser.setDeviceId(userId);
+            case "device": fallbackUser.setDeviceId(userId); break;
+            case "custom_phone": fallbackUser.setCustomPhone(userId); break;
+            case "custom_email": fallbackUser.setCustomEmail(userId); break;
+            default: fallbackUser.setDeviceId(userId);
         }
-
-        User savedUser = userRepository.save(newUser);
-        log.info("创建新用户：id={}, type={}, userId={}", userId, idType, savedUser.getId());
+        User savedUser = userRepository.saveAndFlush(fallbackUser);
+        log.info("创建新用户(fallback)：id={}, type={}, userId={}", userId, idType, savedUser.getId());
         return savedUser.getId();
     }
 
@@ -74,12 +100,8 @@ public class UserIdentifierServiceImpl implements UserIdentifierService {
         }
     }
 
-    private String generateUniquePhone() {
-        String phone;
-        do {
-            phone = "user_" + UUID.randomUUID().toString().substring(0, 10);
-        } while (userRepository.existsByPhone(phone));
-        return phone;
+    private String generatePhone() {
+        return "user_" + UUID.randomUUID().toString().substring(0, 10);
     }
 
     private User getOrCreateDefaultUser() {

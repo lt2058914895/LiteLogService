@@ -1,6 +1,8 @@
 package com.example.litelog.repository;
 
 import com.example.litelog.entity.WeightRecord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,6 +17,8 @@ public interface WeightRecordRepository extends JpaRepository<WeightRecord, Long
     List<WeightRecord> findByUserIdOrderByDateDesc(Long userId);
     
     List<WeightRecord> findByUserId(Long userId);
+    
+    Page<WeightRecord> findByUserId(Long userId, Pageable pageable);
     
     boolean existsByRecordId(String recordId);
     

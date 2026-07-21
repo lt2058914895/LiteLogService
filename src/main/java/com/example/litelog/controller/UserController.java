@@ -116,11 +116,13 @@ public class UserController {
     @GetMapping("/fetch-all-data")
     public ResponseEntity<Object> fetchAllData(
             @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @RequestHeader(value = "X-Id-Type", required = false, defaultValue = "device") String idType) {
+            @RequestHeader(value = "X-Id-Type", required = false, defaultValue = "device") String idType,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
         
-        log.info("获取用户所有数据: userId={}, idType={}", userId, idType);
+        log.info("获取用户所有数据: userId={}, idType={}, page={}, size={}", userId, idType, page, size);
         
-        Object response = userService.fetchAllData(userId, idType);
+        Object response = userService.fetchAllData(userId, idType, page, size);
         return ResponseEntity.ok(response);
     }
 

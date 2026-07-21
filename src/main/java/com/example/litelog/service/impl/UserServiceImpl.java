@@ -55,7 +55,7 @@ public class UserServiceImpl implements UserService {
     private User getUserByIdentifier(String userId, String idType) {
         Long userIdValue = userIdentifierService.getOrCreateUserId(userId, idType);
         return userRepository.findById(userIdValue)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException("用户不存在"));
     }
 
     private UserProfile getOrCreateUserProfile(Long userId) {
@@ -65,7 +65,7 @@ public class UserServiceImpl implements UserService {
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException("用户不存在"));
 
         UserProfile newProfile = UserProfile.builder()
                 .user(user)
@@ -86,119 +86,101 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UpdateProfileResponse updateProfile(String userId, String idType, UpdateProfileRequest request) {
-        try {
-            User user = getUserByIdentifier(userId, idType);
-            UserProfile profile = getOrCreateUserProfile(user.getId());
+        User user = getUserByIdentifier(userId, idType);
+        UserProfile profile = getOrCreateUserProfile(user.getId());
 
-            if (request.getNickname() != null) {
-                user.setNickname(request.getNickname());
-            }
-
-            if (request.getAvatarUrl() != null) {
-                user.setAvatarUrl(request.getAvatarUrl());
-            }
-
-            if (request.getHeight() != null) {
-                profile.setHeight(request.getHeight());
-            }
-
-            if (request.getGender() != null) {
-                profile.setGender(request.getGender());
-            }
-
-            if (request.getAge() != null) {
-                profile.setAge(request.getAge());
-            }
-
-            if (request.getGoalWeight() != null) {
-                profile.setGoalWeight(request.getGoalWeight());
-            }
-
-            if (request.getGoalBodyFat() != null) {
-                profile.setGoalBodyFat(request.getGoalBodyFat());
-            }
-
-            if (request.getGoalWaistCircumference() != null) {
-                profile.setGoalWaistCircumference(request.getGoalWaistCircumference());
-            }
-
-            if (request.getGoalHipCircumference() != null) {
-                profile.setGoalHipCircumference(request.getGoalHipCircumference());
-            }
-
-            if (request.getGoalChestCircumference() != null) {
-                profile.setGoalChestCircumference(request.getGoalChestCircumference());
-            }
-
-            if (request.getGoalThighCircumference() != null) {
-                profile.setGoalThighCircumference(request.getGoalThighCircumference());
-            }
-
-            if (request.getWeightUnit() != null) {
-                profile.setWeightUnit(request.getWeightUnit());
-            }
-
-            userRepository.save(user);
-            userProfileRepository.save(profile);
-
-            log.info("用户资料更新成功：userId={}, idType={}, 昵称：{}", userId, idType, user.getNickname());
-
-            return UpdateProfileResponse.builder()
-                    .success(true)
-                    .message("更新成功")
-                    .nickname(user.getNickname())
-                    .avatarUrl(user.getAvatarUrl())
-                    .height(profile.getHeight())
-                    .gender(profile.getGender())
-                    .age(profile.getAge())
-                    .goalWeight(profile.getGoalWeight())
-                    .goalBodyFat(profile.getGoalBodyFat())
-                    .goalWaistCircumference(profile.getGoalWaistCircumference())
-                    .goalHipCircumference(profile.getGoalHipCircumference())
-                    .goalChestCircumference(profile.getGoalChestCircumference())
-                    .goalThighCircumference(profile.getGoalThighCircumference())
-                    .weightUnit(profile.getWeightUnit())
-                    .build();
-
-        } catch (Exception e) {
-            log.error("更新用户资料失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
-            return UpdateProfileResponse.builder()
-                    .success(false)
-                    .message("更新失败，请重试")
-                    .build();
+        if (request.getNickname() != null) {
+            user.setNickname(request.getNickname());
         }
+
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+
+        if (request.getHeight() != null) {
+            profile.setHeight(request.getHeight());
+        }
+
+        if (request.getGender() != null) {
+            profile.setGender(request.getGender());
+        }
+
+        if (request.getAge() != null) {
+            profile.setAge(request.getAge());
+        }
+
+        if (request.getGoalWeight() != null) {
+            profile.setGoalWeight(request.getGoalWeight());
+        }
+
+        if (request.getGoalBodyFat() != null) {
+            profile.setGoalBodyFat(request.getGoalBodyFat());
+        }
+
+        if (request.getGoalWaistCircumference() != null) {
+            profile.setGoalWaistCircumference(request.getGoalWaistCircumference());
+        }
+
+        if (request.getGoalHipCircumference() != null) {
+            profile.setGoalHipCircumference(request.getGoalHipCircumference());
+        }
+
+        if (request.getGoalChestCircumference() != null) {
+            profile.setGoalChestCircumference(request.getGoalChestCircumference());
+        }
+
+        if (request.getGoalThighCircumference() != null) {
+            profile.setGoalThighCircumference(request.getGoalThighCircumference());
+        }
+
+        if (request.getWeightUnit() != null) {
+            profile.setWeightUnit(request.getWeightUnit());
+        }
+
+        userRepository.save(user);
+        userProfileRepository.save(profile);
+
+        log.info("用户资料更新成功：userId={}, idType={}, 昵称：{}", userId, idType, user.getNickname());
+
+        return UpdateProfileResponse.builder()
+                .success(true)
+                .message("更新成功")
+                .nickname(user.getNickname())
+                .avatarUrl(user.getAvatarUrl())
+                .height(profile.getHeight())
+                .gender(profile.getGender())
+                .age(profile.getAge())
+                .goalWeight(profile.getGoalWeight())
+                .goalBodyFat(profile.getGoalBodyFat())
+                .goalWaistCircumference(profile.getGoalWaistCircumference())
+                .goalHipCircumference(profile.getGoalHipCircumference())
+                .goalChestCircumference(profile.getGoalChestCircumference())
+                .goalThighCircumference(profile.getGoalThighCircumference())
+                .weightUnit(profile.getWeightUnit())
+                .build();
     }
 
     @Override
     public GetProfileResponse getProfile(String userId, String idType) {
-        try {
-            User user = getUserByIdentifier(userId, idType);
-            UserProfile profile = getOrCreateUserProfile(user.getId());
+        User user = getUserByIdentifier(userId, idType);
+        UserProfile profile = getOrCreateUserProfile(user.getId());
 
-            return GetProfileResponse.builder()
-                    .success(true)
-                    .message("获取成功")
-                    .nickname(user.getNickname())
-                    .avatarUrl(user.getAvatarUrl())
-                    .height(profile.getHeight())
-                    .gender(profile.getGender())
-                    .age(profile.getAge())
-                    .goalWeight(profile.getGoalWeight())
-                    .goalBodyFat(profile.getGoalBodyFat())
-                    .goalWaistCircumference(profile.getGoalWaistCircumference())
-                    .goalHipCircumference(profile.getGoalHipCircumference())
-                    .goalChestCircumference(profile.getGoalChestCircumference())
-                    .goalThighCircumference(profile.getGoalThighCircumference())
-                    .weightUnit(profile.getWeightUnit())
-                    .build();
-
-        } catch (Exception e) {
-            log.error("获取用户资料失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
-            return GetProfileResponse.builder()
-                    .success(false)
-                    .message("获取失败，请重试")
-                    .build();
-        }
+        return GetProfileResponse.builder()
+                .success(true)
+                .message("获取成功")
+                .nickname(user.getNickname())
+                .avatarUrl(user.getAvatarUrl())
+                .height(profile.getHeight())
+                .gender(profile.getGender())
+                .age(profile.getAge())
+                .goalWeight(profile.getGoalWeight())
+                .goalBodyFat(profile.getGoalBodyFat())
+                .goalWaistCircumference(profile.getGoalWaistCircumference())
+                .goalHipCircumference(profile.getGoalHipCircumference())
+                .goalChestCircumference(profile.getGoalChestCircumference())
+                .goalThighCircumference(profile.getGoalThighCircumference())
+                .weightUnit(profile.getWeightUnit())
+                .build();
     }
 
     private static final String AVATAR_STORAGE_DIR = "./uploads/avatars";
@@ -235,60 +217,51 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Object fetchAllData(String userId, String idType) {
-        try {
-            User user = getUserByIdentifier(userId, idType);
-            UserProfile profile = getOrCreateUserProfile(user.getId());
-            List<WeightRecord> records = weightRecordRepository.findByUserId(user.getId());
+        User user = getUserByIdentifier(userId, idType);
+        UserProfile profile = getOrCreateUserProfile(user.getId());
+        List<WeightRecord> records = weightRecordRepository.findByUserId(user.getId());
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("message", "获取成功");
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "获取成功");
 
-            Map<String, Object> profileData = new HashMap<>();
-            profileData.put("nickname", user.getNickname());
-            profileData.put("avatarUrl", user.getAvatarUrl());
-            profileData.put("height", profile.getHeight());
-            profileData.put("gender", profile.getGender());
-            profileData.put("age", profile.getAge());
-            profileData.put("goalWeight", profile.getGoalWeight());
-            profileData.put("goalBodyFat", profile.getGoalBodyFat());
-            profileData.put("goalWaistCircumference", profile.getGoalWaistCircumference());
-            profileData.put("goalHipCircumference", profile.getGoalHipCircumference());
-            profileData.put("goalChestCircumference", profile.getGoalChestCircumference());
-            profileData.put("goalThighCircumference", profile.getGoalThighCircumference());
-            profileData.put("weightUnit", profile.getWeightUnit());
-            result.put("profile", profileData);
+        Map<String, Object> profileData = new HashMap<>();
+        profileData.put("nickname", user.getNickname());
+        profileData.put("avatarUrl", user.getAvatarUrl());
+        profileData.put("height", profile.getHeight());
+        profileData.put("gender", profile.getGender());
+        profileData.put("age", profile.getAge());
+        profileData.put("goalWeight", profile.getGoalWeight());
+        profileData.put("goalBodyFat", profile.getGoalBodyFat());
+        profileData.put("goalWaistCircumference", profile.getGoalWaistCircumference());
+        profileData.put("goalHipCircumference", profile.getGoalHipCircumference());
+        profileData.put("goalChestCircumference", profile.getGoalChestCircumference());
+        profileData.put("goalThighCircumference", profile.getGoalThighCircumference());
+        profileData.put("weightUnit", profile.getWeightUnit());
+        result.put("profile", profileData);
 
-            List<Map<String, Object>> recordsData = records.stream().map(record -> {
-                Map<String, Object> recordMap = new HashMap<>();
-                recordMap.put("recordId", record.getRecordId());
-                recordMap.put("weight", record.getWeight());
-                recordMap.put("bodyFatPercentage", record.getBodyFatPercentage());
-                recordMap.put("waistCircumference", record.getWaistCircumference());
-                recordMap.put("hipCircumference", record.getHipCircumference());
-                recordMap.put("chestCircumference", record.getChestCircumference());
-                recordMap.put("thighCircumference", record.getThighCircumference());
-                recordMap.put("note", record.getNote());
-                recordMap.put("date", record.getDate() != null ? record.getDate().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
-                recordMap.put("createdAt", record.getCreatedAt() != null ? record.getCreatedAt().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
-                recordMap.put("updatedAt", record.getUpdatedAt() != null ? record.getUpdatedAt().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
-                recordMap.put("imageUrl", record.getImageUrl());
-                recordMap.put("measurementTimePeriod", record.getMeasurementTimePeriod());
-                return recordMap;
-            }).toList();
-            result.put("records", recordsData);
+        List<Map<String, Object>> recordsData = records.stream().map(record -> {
+            Map<String, Object> recordMap = new HashMap<>();
+            recordMap.put("recordId", record.getRecordId());
+            recordMap.put("weight", record.getWeight());
+            recordMap.put("bodyFatPercentage", record.getBodyFatPercentage());
+            recordMap.put("waistCircumference", record.getWaistCircumference());
+            recordMap.put("hipCircumference", record.getHipCircumference());
+            recordMap.put("chestCircumference", record.getChestCircumference());
+            recordMap.put("thighCircumference", record.getThighCircumference());
+            recordMap.put("note", record.getNote());
+            recordMap.put("date", record.getDate() != null ? record.getDate().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
+            recordMap.put("createdAt", record.getCreatedAt() != null ? record.getCreatedAt().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
+            recordMap.put("updatedAt", record.getUpdatedAt() != null ? record.getUpdatedAt().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
+            recordMap.put("imageUrl", record.getImageUrl());
+            recordMap.put("measurementTimePeriod", record.getMeasurementTimePeriod());
+            return recordMap;
+        }).toList();
+        result.put("records", recordsData);
 
-            log.info("获取用户所有数据成功：userId={}, idType={}, 记录数={}", userId, idType, records.size());
-            
-            return result;
-
-        } catch (Exception e) {
-            log.error("获取用户所有数据失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
-            Map<String, Object> errorResult = new HashMap<>();
-            errorResult.put("success", false);
-            errorResult.put("message", "获取失败，请重试");
-            return errorResult;
-        }
+        log.info("获取用户所有数据成功：userId={}, idType={}, 记录数={}", userId, idType, records.size());
+        
+        return result;
     }
 
     private String getFileExtension(String filename) {

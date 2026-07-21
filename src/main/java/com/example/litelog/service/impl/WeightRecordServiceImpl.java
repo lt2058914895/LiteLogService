@@ -60,72 +60,60 @@ public class WeightRecordServiceImpl implements WeightRecordService {
     @Override
     @Transactional
     public WeightRecordSyncResponse syncRecords(String userId, String idType, WeightRecordSyncRequest request) {
-        try {
-            Long userIdValue = getUserId(userId, idType);
-            List<String> syncedRecordIds = new ArrayList<>();
-            List<String> conflictRecordIds = new ArrayList<>();
+        Long userIdValue = getUserId(userId, idType);
+        List<String> syncedRecordIds = new ArrayList<>();
+        List<String> conflictRecordIds = new ArrayList<>();
 
-            // 批量查询所有已存在的记录，消除 N+1 查询
-            List<String> recordIds = request.getRecords().stream()
-                    .map(WeightRecordRequest::getRecordId)
-                    .toList();
-            Map<String, WeightRecord> existingRecordMap = weightRecordRepository.findAllByRecordIdIn(recordIds)
-                    .stream()
-                    .collect(Collectors.toMap(WeightRecord::getRecordId, r -> r));
+        // 批量查询所有已存在的记录，消除 N+1 查询
+        List<String> recordIds = request.getRecords().stream()
+                .map(WeightRecordRequest::getRecordId)
+                .toList();
+        Map<String, WeightRecord> existingRecordMap = weightRecordRepository.findAllByRecordIdIn(recordIds)
+                .stream()
+                .collect(Collectors.toMap(WeightRecord::getRecordId, r -> r));
 
-            for (WeightRecordRequest recordRequest : request.getRecords()) {
-                try {
-                    if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
-                        WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
-                        if (existingRecord != null) {
-                            deleteRecordImage(existingRecord.getImageUrl());
-                            weightRecordRepository.delete(existingRecord);
-                            log.info("删除体重记录：{}", recordRequest.getRecordId());
-                        }
-                        syncedRecordIds.add(recordRequest.getRecordId());
-                    } else {
-                        WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
-                        if (existingRecord != null) {
-                            if (updateRecordWithConflictCheck(recordRequest, existingRecord)) {
-                                syncedRecordIds.add(recordRequest.getRecordId());
-                            } else {
-                                conflictRecordIds.add(recordRequest.getRecordId());
-                            }
-                        } else {
-                            createRecord(recordRequest, userIdValue);
-                            syncedRecordIds.add(recordRequest.getRecordId());
-                        }
+        for (WeightRecordRequest recordRequest : request.getRecords()) {
+            try {
+                if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
+                    WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
+                    if (existingRecord != null) {
+                        deleteRecordImage(existingRecord.getImageUrl());
+                        weightRecordRepository.delete(existingRecord);
+                        log.info("删除体重记录：{}", recordRequest.getRecordId());
                     }
-                } catch (Exception e) {
-                    log.warn("同步记录失败：{}, 错误：{}", recordRequest.getRecordId(), e.getMessage());
+                    syncedRecordIds.add(recordRequest.getRecordId());
+                } else {
+                    WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
+                    if (existingRecord != null) {
+                        if (updateRecordWithConflictCheck(recordRequest, existingRecord)) {
+                            syncedRecordIds.add(recordRequest.getRecordId());
+                        } else {
+                            conflictRecordIds.add(recordRequest.getRecordId());
+                        }
+                    } else {
+                        createRecord(recordRequest, userIdValue);
+                        syncedRecordIds.add(recordRequest.getRecordId());
+                    }
                 }
+            } catch (Exception e) {
+                log.warn("同步记录失败：{}, 错误：{}", recordRequest.getRecordId(), e.getMessage());
             }
-
-            String message = "同步成功";
-            if (!conflictRecordIds.isEmpty()) {
-                message = String.format("同步成功，%d 条记录存在冲突已跳过", conflictRecordIds.size());
-            }
-            log.info("体重记录同步完成，userId={}, idType={}, 成功同步 {} 条，冲突 {} 条", 
-                    userId, idType, syncedRecordIds.size(), conflictRecordIds.size());
-
-            return WeightRecordSyncResponse.builder()
-                    .success(true)
-                    .message(message)
-                    .syncedCount(syncedRecordIds.size())
-                    .syncedRecordIds(syncedRecordIds)
-                    .conflictRecordIds(conflictRecordIds)
-                    .build();
-
-        } catch (Exception e) {
-            log.error("同步体重记录失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
-            return WeightRecordSyncResponse.builder()
-                    .success(false)
-                    .message("同步失败，请重试")
-                    .syncedCount(0)
-                    .syncedRecordIds(new ArrayList<>())
-                    .conflictRecordIds(new ArrayList<>())
-                    .build();
         }
+
+        String message = "同步成功";
+        if (!conflictRecordIds.isEmpty()) {
+            message = String.format("同步成功，%d 条记录存在冲突已跳过", conflictRecordIds.size());
+        }
+        log.info("体重记录同步完成，userId={}, idType={}, 成功同步 {} 条，冲突 {} 条", 
+                userId, idType, syncedRecordIds.size(), conflictRecordIds.size());
+
+        return WeightRecordSyncResponse.builder()
+                .success(true)
+                .message(message)
+                .syncedCount(syncedRecordIds.size())
+                .syncedRecordIds(syncedRecordIds)
+                .conflictRecordIds(conflictRecordIds)
+                .build();
     }
 
     private void createRecord(WeightRecordRequest request, Long userId) {
@@ -185,67 +173,56 @@ public class WeightRecordServiceImpl implements WeightRecordService {
     @Override
     @Transactional
     public WeightRecordSyncResponse syncRecordsWithImages(String userId, String idType, WeightRecordSyncRequest request, List<MultipartFile> files) {
-        try {
-            Long userIdValue = getUserId(userId, idType);
-            ensureUploadDirectoryExists();
-            Map<String, MultipartFile> fileMap = buildFileMap(files);
-            List<String> syncedRecordIds = new ArrayList<>();
-            List<WeightRecordSyncResponse.SyncedRecord> syncedRecords = new ArrayList<>();
+        Long userIdValue = getUserId(userId, idType);
+        ensureUploadDirectoryExists();
+        Map<String, MultipartFile> fileMap = buildFileMap(files);
+        List<String> syncedRecordIds = new ArrayList<>();
+        List<WeightRecordSyncResponse.SyncedRecord> syncedRecords = new ArrayList<>();
 
-            // 批量查询所有已存在的记录，消除 N+1 查询
-            List<String> recordIds = request.getRecords().stream()
-                    .map(WeightRecordRequest::getRecordId)
-                    .toList();
-            Map<String, WeightRecord> existingRecordMap = weightRecordRepository.findAllByRecordIdIn(recordIds)
-                    .stream()
-                    .collect(Collectors.toMap(WeightRecord::getRecordId, r -> r));
+        // 批量查询所有已存在的记录，消除 N+1 查询
+        List<String> recordIds = request.getRecords().stream()
+                .map(WeightRecordRequest::getRecordId)
+                .toList();
+        Map<String, WeightRecord> existingRecordMap = weightRecordRepository.findAllByRecordIdIn(recordIds)
+                .stream()
+                .collect(Collectors.toMap(WeightRecord::getRecordId, r -> r));
 
-            for (WeightRecordRequest recordRequest : request.getRecords()) {
-                try {
-                    String imageUrl = null;
-                    if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
-                        WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
-                        if (existingRecord != null) {
-                            deleteRecordImage(existingRecord.getImageUrl());
-                            weightRecordRepository.delete(existingRecord);
-                            log.info("删除体重记录：{}", recordRequest.getRecordId());
-                        }
+        for (WeightRecordRequest recordRequest : request.getRecords()) {
+            try {
+                String imageUrl = null;
+                if (Boolean.TRUE.equals(recordRequest.getDeleted())) {
+                    WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
+                    if (existingRecord != null) {
+                        deleteRecordImage(existingRecord.getImageUrl());
+                        weightRecordRepository.delete(existingRecord);
+                        log.info("删除体重记录：{}", recordRequest.getRecordId());
+                    }
+                } else {
+                    WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
+                    if (existingRecord != null) {
+                        imageUrl = updateRecordWithImage(recordRequest, existingRecord, fileMap);
                     } else {
-                        WeightRecord existingRecord = existingRecordMap.get(recordRequest.getRecordId());
-                        if (existingRecord != null) {
-                            imageUrl = updateRecordWithImage(recordRequest, existingRecord, fileMap);
-                        } else {
-                            imageUrl = createRecordWithImage(recordRequest, fileMap, userIdValue);
-                        }
+                        imageUrl = createRecordWithImage(recordRequest, fileMap, userIdValue);
                     }
-                    syncedRecordIds.add(recordRequest.getRecordId());
-                    if (imageUrl != null) {
-                        syncedRecords.add(new WeightRecordSyncResponse.SyncedRecord(recordRequest.getRecordId(), imageUrl));
-                    }
-                } catch (Exception e) {
-                    log.warn("同步记录失败：{}, 错误：{}", recordRequest.getRecordId(), e.getMessage());
                 }
+                syncedRecordIds.add(recordRequest.getRecordId());
+                if (imageUrl != null) {
+                    syncedRecords.add(new WeightRecordSyncResponse.SyncedRecord(recordRequest.getRecordId(), imageUrl));
+                }
+            } catch (Exception e) {
+                log.warn("同步记录失败：{}, 错误：{}", recordRequest.getRecordId(), e.getMessage());
             }
-
-            log.info("体重记录同步完成(含图片)，userId={}, idType={}, 成功同步 {} 条", userId, idType, syncedRecordIds.size());
-
-            return WeightRecordSyncResponse.builder()
-                    .success(true)
-                    .message("同步成功")
-                    .syncedCount(syncedRecordIds.size())
-                    .syncedRecordIds(syncedRecordIds)
-                    .syncedRecords(syncedRecords)
-                    .build();
-
-        } catch (Exception e) {
-            log.error("同步体重记录失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
-            return WeightRecordSyncResponse.builder()
-                    .success(false)
-                    .message("同步失败，请重试")
-                    .syncedCount(0)
-                    .syncedRecordIds(new ArrayList<>())
-                    .build();
         }
+
+        log.info("体重记录同步完成(含图片)，userId={}, idType={}, 成功同步 {} 条", userId, idType, syncedRecordIds.size());
+
+        return WeightRecordSyncResponse.builder()
+                .success(true)
+                .message("同步成功")
+                .syncedCount(syncedRecordIds.size())
+                .syncedRecordIds(syncedRecordIds)
+                .syncedRecords(syncedRecords)
+                .build();
     }
 
     private String createRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap, Long userId) throws IOException {

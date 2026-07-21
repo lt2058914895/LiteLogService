@@ -30,10 +30,6 @@ spring:
       hibernate:
         format_sql: true
 
-jwt:
-  secret: REDACTED
-  expiration: 86400000
-
 logging:
   level:
     com.example.litelog: DEBUG

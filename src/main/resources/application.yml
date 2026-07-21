@@ -11,10 +11,6 @@ spring:
       max-file-size: 5MB
       max-request-size: 10MB
 
-jwt:
-  secret: REDACTED
-  expiration: 86400000
-
 logging:
   level:
     com.example.litelog: INFO

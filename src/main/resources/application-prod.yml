@@ -26,10 +26,6 @@ spring:
           lob:
             non_contextual_creation: true
 
-jwt:
-  secret: REDACTED
-  expiration: 86400000
-
 avatar:
   upload:
     path: ./uploads/avatars

@@ -13,6 +13,7 @@ import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.UserIdentifierService;
 import com.example.litelog.service.UserService;
 import jakarta.transaction.Transactional;
+import com.example.litelog.util.DateTimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -250,9 +250,9 @@ public class UserServiceImpl implements UserService {
             recordMap.put("chestCircumference", record.getChestCircumference());
             recordMap.put("thighCircumference", record.getThighCircumference());
             recordMap.put("note", record.getNote());
-            recordMap.put("date", record.getDate() != null ? record.getDate().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
-            recordMap.put("createdAt", record.getCreatedAt() != null ? record.getCreatedAt().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
-            recordMap.put("updatedAt", record.getUpdatedAt() != null ? record.getUpdatedAt().atZone(ZoneId.systemDefault()).toEpochSecond() : null);
+            recordMap.put("date", DateTimeUtils.toEpochSeconds(record.getDate()));
+            recordMap.put("createdAt", DateTimeUtils.toEpochSeconds(record.getCreatedAt()));
+            recordMap.put("updatedAt", DateTimeUtils.toEpochSeconds(record.getUpdatedAt()));
             recordMap.put("imageUrl", record.getImageUrl());
             recordMap.put("measurementTimePeriod", record.getMeasurementTimePeriod());
             return recordMap;
@@ -264,29 +264,4 @@ public class UserServiceImpl implements UserService {
         return result;
     }
 
-    private String getFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return ".jpg";
-        }
-        String extension = filename.substring(filename.lastIndexOf("."));
-        String lowerExtension = extension.toLowerCase();
-        if (lowerExtension.equals(".jpg") || lowerExtension.equals(".jpeg") ||
-            lowerExtension.equals(".png") || lowerExtension.equals(".gif")) {
-            return lowerExtension;
-        }
-        return ".jpg";
-    }
-
-    private void deleteOldAvatar(String oldAvatarUrl) {
-        try {
-            String filename = oldAvatarUrl.substring(AVATAR_URL_PREFIX.length());
-            Path oldFilePath = Paths.get(AVATAR_STORAGE_DIR).resolve(filename);
-            if (Files.exists(oldFilePath)) {
-                Files.delete(oldFilePath);
-                log.info("旧头像已删除：{}", filename);
-            }
-        } catch (IOException e) {
-            log.warn("删除旧头像失败：{}", e.getMessage());
-        }
-    }
 }

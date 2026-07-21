@@ -8,6 +8,8 @@ import com.example.litelog.exception.BusinessException;
 import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.UserIdentifierService;
 import com.example.litelog.service.WeightRecordService;
+import com.example.litelog.util.DateTimeUtils;
+import com.example.litelog.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,9 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,8 +53,41 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         return userIdentifierService.getOrCreateUserId(userId, idType);
     }
 
-    private LocalDateTime toLocalDateTime(Long epochSecond) {
-        return LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSecond), ZoneId.systemDefault());
+    /**
+     * 从请求构建 WeightRecord 实体（公共逻辑，消除 createRecord 与 createRecordWithImage 的重复）
+     */
+    private WeightRecord buildRecordFromRequest(WeightRecordRequest request, Long userId) {
+        return WeightRecord.builder()
+                .userId(userId)
+                .recordId(request.getRecordId())
+                .weight(request.getWeight())
+                .bodyFatPercentage(request.getBodyFatPercentage())
+                .waistCircumference(request.getWaistCircumference())
+                .hipCircumference(request.getHipCircumference())
+                .chestCircumference(request.getChestCircumference())
+                .thighCircumference(request.getThighCircumference())
+                .measurementTimePeriod(request.getMeasurementTimePeriod())
+                .note(request.getNote())
+                .date(DateTimeUtils.toLocalDateTime(request.getDate()))
+                .createdAt(DateTimeUtils.toLocalDateTime(request.getCreatedAt()))
+                .updatedAt(DateTimeUtils.toLocalDateTime(request.getUpdatedAt()))
+                .build();
+    }
+
+    /**
+     * 更新记录字段（公共逻辑，消除 updateRecordWithConflictCheck 与 updateRecordWithImage 的重复）
+     */
+    private void updateRecordFields(WeightRecord existingRecord, WeightRecordRequest request) {
+        existingRecord.setWeight(request.getWeight());
+        existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
+        existingRecord.setWaistCircumference(request.getWaistCircumference());
+        existingRecord.setHipCircumference(request.getHipCircumference());
+        existingRecord.setChestCircumference(request.getChestCircumference());
+        existingRecord.setThighCircumference(request.getThighCircumference());
+        existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
+        existingRecord.setNote(request.getNote());
+        existingRecord.setDate(DateTimeUtils.toLocalDateTime(request.getDate()));
+        existingRecord.setUpdatedAt(DateTimeUtils.toLocalDateTime(request.getUpdatedAt()));
     }
 
     @Override
@@ -91,7 +124,8 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                             conflictRecordIds.add(recordRequest.getRecordId());
                         }
                     } else {
-                        createRecord(recordRequest, userIdValue);
+                        WeightRecord record = buildRecordFromRequest(recordRequest, userIdValue);
+                        weightRecordRepository.save(record);
                         syncedRecordIds.add(recordRequest.getRecordId());
                     }
                 }
@@ -116,29 +150,9 @@ public class WeightRecordServiceImpl implements WeightRecordService {
                 .build();
     }
 
-    private void createRecord(WeightRecordRequest request, Long userId) {
-        WeightRecord record = WeightRecord.builder()
-                .userId(userId)
-                .recordId(request.getRecordId())
-                .weight(request.getWeight())
-                .bodyFatPercentage(request.getBodyFatPercentage())
-                .waistCircumference(request.getWaistCircumference())
-                .hipCircumference(request.getHipCircumference())
-                .chestCircumference(request.getChestCircumference())
-                .thighCircumference(request.getThighCircumference())
-                .measurementTimePeriod(request.getMeasurementTimePeriod())
-                .note(request.getNote())
-                .date(toLocalDateTime(request.getDate()))
-                .createdAt(toLocalDateTime(request.getCreatedAt()))
-                .updatedAt(toLocalDateTime(request.getUpdatedAt()))
-                .build();
-
-        weightRecordRepository.save(record);
-    }
-
     private boolean updateRecordWithConflictCheck(WeightRecordRequest request, WeightRecord existingRecord) {
         LocalDateTime serverUpdatedAt = existingRecord.getUpdatedAt();
-        LocalDateTime clientUpdatedAt = toLocalDateTime(request.getUpdatedAt());
+        LocalDateTime clientUpdatedAt = DateTimeUtils.toLocalDateTime(request.getUpdatedAt());
 
         if (serverUpdatedAt.isAfter(clientUpdatedAt)) {
             log.info("记录存在冲突，跳过更新：recordId={}, serverUpdatedAt={}, clientUpdatedAt={}", 
@@ -155,19 +169,6 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         
         weightRecordRepository.save(existingRecord);
         return true;
-    }
-
-    private void updateRecordFields(WeightRecord existingRecord, WeightRecordRequest request) {
-        existingRecord.setWeight(request.getWeight());
-        existingRecord.setBodyFatPercentage(request.getBodyFatPercentage());
-        existingRecord.setWaistCircumference(request.getWaistCircumference());
-        existingRecord.setHipCircumference(request.getHipCircumference());
-        existingRecord.setChestCircumference(request.getChestCircumference());
-        existingRecord.setThighCircumference(request.getThighCircumference());
-        existingRecord.setMeasurementTimePeriod(request.getMeasurementTimePeriod());
-        existingRecord.setNote(request.getNote());
-        existingRecord.setDate(toLocalDateTime(request.getDate()));
-        existingRecord.setUpdatedAt(toLocalDateTime(request.getUpdatedAt()));
     }
 
     @Override
@@ -226,21 +227,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
     }
 
     private String createRecordWithImage(WeightRecordRequest request, Map<String, MultipartFile> fileMap, Long userId) throws IOException {
-        WeightRecord record = WeightRecord.builder()
-                .userId(userId)
-                .recordId(request.getRecordId())
-                .weight(request.getWeight())
-                .bodyFatPercentage(request.getBodyFatPercentage())
-                .waistCircumference(request.getWaistCircumference())
-                .hipCircumference(request.getHipCircumference())
-                .chestCircumference(request.getChestCircumference())
-                .thighCircumference(request.getThighCircumference())
-                .measurementTimePeriod(request.getMeasurementTimePeriod())
-                .note(request.getNote())
-                .date(toLocalDateTime(request.getDate()))
-                .createdAt(toLocalDateTime(request.getCreatedAt()))
-                .updatedAt(toLocalDateTime(request.getUpdatedAt()))
-                .build();
+        WeightRecord record = buildRecordFromRequest(request, userId);
 
         String imageFileName = request.getImageFileName();
         if (imageFileName != null && !imageFileName.isEmpty() && fileMap.containsKey(imageFileName)) {
@@ -296,7 +283,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
             throw new BusinessException("图片大小不能超过5MB");
         }
 
-        String extension = getFileExtension(contentType);
+        String extension = FileUtils.getExtensionFromContentType(contentType);
         String fileName = recordId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + extension;
         Path filePath = Paths.get(imageUploadPath).resolve(fileName);
 
@@ -306,15 +293,6 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         log.info("记录图片保存成功：{}", imageUrl);
 
         return imageUrl;
-    }
-
-    private String getFileExtension(String contentType) {
-        return switch (contentType) {
-            case "image/jpeg", "image/jpg" -> "jpg";
-            case "image/png" -> "png";
-            case "image/gif" -> "gif";
-            default -> "jpg";
-        };
     }
 
     private void deleteRecordImage(String imageUrl) {

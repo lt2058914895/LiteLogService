@@ -4,6 +4,7 @@ import com.example.litelog.dto.request.UpdateProfileRequest;
 import com.example.litelog.dto.response.GetProfileResponse;
 import com.example.litelog.dto.response.UpdateProfileResponse;
 import com.example.litelog.service.UserService;
+import com.example.litelog.util.FileUtils;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,8 +70,8 @@ public class UserController {
             }
             
             String filename = file.getOriginalFilename();
-            String extension = getFileExtension(filename);
-            if (!isValidImageExtension(extension)) {
+            String extension = FileUtils.getExtensionFromFilename(filename);
+            if (!FileUtils.isValidImageExtension(extension)) {
                 response.put("success", false);
                 response.put("message", "仅支持 jpg/jpeg/png/gif 格式");
                 return ResponseEntity.badRequest().body(response);
@@ -123,16 +124,4 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    private String getFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return "";
-        }
-        return filename.substring(filename.lastIndexOf("."));
-    }
-
-    private boolean isValidImageExtension(String extension) {
-        String lower = extension.toLowerCase();
-        return lower.equals(".jpg") || lower.equals(".jpeg") ||
-               lower.equals(".png") || lower.equals(".gif");
-    }
 }

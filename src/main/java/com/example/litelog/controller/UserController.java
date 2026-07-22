@@ -1,8 +1,11 @@
 package com.example.litelog.controller;
 
 import com.example.litelog.dto.request.UpdateProfileRequest;
+import com.example.litelog.dto.response.FetchAllDataResponse;
 import com.example.litelog.dto.response.GetProfileResponse;
+import com.example.litelog.dto.response.GetUserIdResponse;
 import com.example.litelog.dto.response.UpdateProfileResponse;
+import com.example.litelog.dto.response.UploadAvatarResponse;
 import com.example.litelog.service.UserService;
 import com.example.litelog.util.FileUtils;
 import jakarta.validation.Valid;
@@ -14,8 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/user")
@@ -53,68 +54,77 @@ public class UserController {
     }
 
     @PostMapping(value = "/avatar/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> uploadAvatar(
+    public ResponseEntity<UploadAvatarResponse> uploadAvatar(
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-Id-Type", required = false, defaultValue = "device") String idType,
             @RequestParam("file") MultipartFile file) {
         
         log.info("头像上传: userId={}, idType={}, 文件名={}, 大小={}", userId, idType, file.getOriginalFilename(), file.getSize());
         
-        Map<String, Object> response = new HashMap<>();
-        
         try {
             if (file.isEmpty()) {
-                response.put("success", false);
-                response.put("message", "请选择图片");
+                UploadAvatarResponse response = UploadAvatarResponse.builder()
+                        .success(false)
+                        .message("请选择图片")
+                        .build();
                 return ResponseEntity.badRequest().body(response);
             }
             
             String filename = file.getOriginalFilename();
             String extension = FileUtils.getExtensionFromFilename(filename);
             if (!FileUtils.isValidImageExtension(extension)) {
-                response.put("success", false);
-                response.put("message", "仅支持 jpg/jpeg/png/gif 格式");
+                UploadAvatarResponse response = UploadAvatarResponse.builder()
+                        .success(false)
+                        .message("仅支持 jpg/jpeg/png/gif 格式")
+                        .build();
                 return ResponseEntity.badRequest().body(response);
             }
             
             String avatarUrl = userService.uploadAvatar(userId, idType, file.getBytes(), filename);
             
-            response.put("success", true);
-            response.put("message", "上传成功");
-            response.put("avatarUrl", avatarUrl);
+            UploadAvatarResponse response = UploadAvatarResponse.builder()
+                    .success(true)
+                    .message("上传成功")
+                    .avatarUrl(avatarUrl)
+                    .build();
             return ResponseEntity.ok(response);
             
         } catch (IOException e) {
             log.error("头像上传失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
-            response.put("success", false);
-            response.put("message", "上传失败，请重试");
+            UploadAvatarResponse response = UploadAvatarResponse.builder()
+                    .success(false)
+                    .message("上传失败，请重试")
+                    .build();
             return ResponseEntity.internalServerError().body(response);
         }
     }
 
     @GetMapping("/id")
-    public ResponseEntity<Map<String, Object>> getUserId(
+    public ResponseEntity<GetUserIdResponse> getUserId(
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-Id-Type", required = false, defaultValue = "device") String idType) {
         
         log.info("获取用户ID: userId={}, idType={}", userId, idType);
         
-        Map<String, Object> response = new HashMap<>();
         try {
             Long userIdValue = userService.getOrCreateUserId(userId, idType);
-            response.put("success", true);
-            response.put("userId", userIdValue);
+            GetUserIdResponse response = GetUserIdResponse.builder()
+                    .success(true)
+                    .userId(userIdValue)
+                    .build();
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("获取用户ID失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
-            response.put("success", false);
-            response.put("message", "获取用户ID失败");
+            GetUserIdResponse response = GetUserIdResponse.builder()
+                    .success(false)
+                    .message("获取用户ID失败")
+                    .build();
             return ResponseEntity.internalServerError().body(response);
         }
     }
 
     @GetMapping("/fetch-all-data")
-    public ResponseEntity<Object> fetchAllData(
+    public ResponseEntity<FetchAllDataResponse> fetchAllData(
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @RequestHeader(value = "X-Id-Type", required = false, defaultValue = "device") String idType,
             @RequestParam(value = "page", required = false) Integer page,
@@ -122,7 +132,7 @@ public class UserController {
         
         log.info("获取用户所有数据: userId={}, idType={}, page={}, size={}", userId, idType, page, size);
         
-        Object response = userService.fetchAllData(userId, idType, page, size);
+        FetchAllDataResponse response = userService.fetchAllData(userId, idType, page, size);
         return ResponseEntity.ok(response);
     }
 

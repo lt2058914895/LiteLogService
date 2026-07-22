@@ -1,44 +1,41 @@
 package com.example.litelog.dto.response;
 
-import java.time.LocalDateTime;
-
+/**
+ * 统一错误响应 DTO，替代 GlobalExceptionHandler 中的 Map<String, Object>
+ */
 public class ErrorResponse {
 
-    private int status;
-    private String error;
+    private Boolean success;
+    private Integer code;
     private String message;
-    private String path;
-    private LocalDateTime timestamp;
 
     public ErrorResponse() {
     }
 
-    public ErrorResponse(int status, String error, String message, String path, LocalDateTime timestamp) {
-        this.status = status;
-        this.error = error;
+    public ErrorResponse(Boolean success, Integer code, String message) {
+        this.success = success;
+        this.code = code;
         this.message = message;
-        this.path = path;
-        this.timestamp = timestamp;
     }
 
     public static ErrorResponseBuilder builder() {
         return new ErrorResponseBuilder();
     }
 
-    public int getStatus() {
-        return status;
+    public Boolean getSuccess() {
+        return success;
     }
 
-    public void setStatus(int status) {
-        this.status = status;
+    public void setSuccess(Boolean success) {
+        this.success = success;
     }
 
-    public String getError() {
-        return error;
+    public Integer getCode() {
+        return code;
     }
 
-    public void setError(String error) {
-        this.error = error;
+    public void setCode(Integer code) {
+        this.code = code;
     }
 
     public String getMessage() {
@@ -49,36 +46,18 @@ public class ErrorResponse {
         this.message = message;
     }
 
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
     public static class ErrorResponseBuilder {
-        private int status;
-        private String error;
+        private Boolean success;
+        private Integer code;
         private String message;
-        private String path;
-        private LocalDateTime timestamp;
 
-        public ErrorResponseBuilder status(int status) {
-            this.status = status;
+        public ErrorResponseBuilder success(Boolean success) {
+            this.success = success;
             return this;
         }
 
-        public ErrorResponseBuilder error(String error) {
-            this.error = error;
+        public ErrorResponseBuilder code(Integer code) {
+            this.code = code;
             return this;
         }
 
@@ -87,18 +66,8 @@ public class ErrorResponse {
             return this;
         }
 
-        public ErrorResponseBuilder path(String path) {
-            this.path = path;
-            return this;
-        }
-
-        public ErrorResponseBuilder timestamp(LocalDateTime timestamp) {
-            this.timestamp = timestamp;
-            return this;
-        }
-
         public ErrorResponse build() {
-            return new ErrorResponse(status, error, message, path, timestamp);
+            return new ErrorResponse(success, code, message);
         }
     }
 }

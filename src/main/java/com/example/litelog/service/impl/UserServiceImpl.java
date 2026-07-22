@@ -1,6 +1,7 @@
 package com.example.litelog.service.impl;
 
 import com.example.litelog.dto.request.UpdateProfileRequest;
+import com.example.litelog.dto.response.FetchAllDataResponse;
 import com.example.litelog.dto.response.GetProfileResponse;
 import com.example.litelog.dto.response.UpdateProfileResponse;
 import com.example.litelog.entity.User;
@@ -27,9 +28,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -243,7 +242,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Object fetchAllData(String userId, String idType, Integer page, Integer size) {
+    public FetchAllDataResponse fetchAllData(String userId, String idType, Integer page, Integer size) {
         User user = getUserByIdentifier(userId, idType);
         UserProfile profile = getOrCreateUserProfile(user.getId());
 
@@ -269,54 +268,56 @@ public class UserServiceImpl implements UserService {
             totalRecords = records.size();
         }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("message", "获取成功");
+        UpdateProfileResponse profileData = UpdateProfileResponse.builder()
+                .success(true)
+                .message("获取成功")
+                .nickname(user.getNickname())
+                .avatarUrl(user.getAvatarUrl())
+                .height(profile.getHeight())
+                .gender(profile.getGender())
+                .age(profile.getAge())
+                .goalWeight(profile.getGoalWeight())
+                .goalBodyFat(profile.getGoalBodyFat())
+                .goalWaistCircumference(profile.getGoalWaistCircumference())
+                .goalHipCircumference(profile.getGoalHipCircumference())
+                .goalChestCircumference(profile.getGoalChestCircumference())
+                .goalThighCircumference(profile.getGoalThighCircumference())
+                .weightUnit(profile.getWeightUnit())
+                .build();
 
-        Map<String, Object> profileData = new HashMap<>();
-        profileData.put("nickname", user.getNickname());
-        profileData.put("avatarUrl", user.getAvatarUrl());
-        profileData.put("height", profile.getHeight());
-        profileData.put("gender", profile.getGender());
-        profileData.put("age", profile.getAge());
-        profileData.put("goalWeight", profile.getGoalWeight());
-        profileData.put("goalBodyFat", profile.getGoalBodyFat());
-        profileData.put("goalWaistCircumference", profile.getGoalWaistCircumference());
-        profileData.put("goalHipCircumference", profile.getGoalHipCircumference());
-        profileData.put("goalChestCircumference", profile.getGoalChestCircumference());
-        profileData.put("goalThighCircumference", profile.getGoalThighCircumference());
-        profileData.put("weightUnit", profile.getWeightUnit());
-        result.put("profile", profileData);
+        List<FetchAllDataResponse.RecordData> recordsData = records.stream().map(record ->
+                new FetchAllDataResponse.RecordData(
+                        record.getRecordId(),
+                        record.getWeight(),
+                        record.getBodyFatPercentage(),
+                        record.getWaistCircumference(),
+                        record.getHipCircumference(),
+                        record.getChestCircumference(),
+                        record.getThighCircumference(),
+                        record.getNote(),
+                        DateTimeUtils.toEpochSeconds(record.getDate()),
+                        DateTimeUtils.toEpochSeconds(record.getCreatedAt()),
+                        DateTimeUtils.toEpochSeconds(record.getUpdatedAt()),
+                        record.getImageUrl(),
+                        record.getMeasurementTimePeriod()
+                )
+        ).toList();
 
-        List<Map<String, Object>> recordsData = records.stream().map(record -> {
-            Map<String, Object> recordMap = new HashMap<>();
-            recordMap.put("recordId", record.getRecordId());
-            recordMap.put("weight", record.getWeight());
-            recordMap.put("bodyFatPercentage", record.getBodyFatPercentage());
-            recordMap.put("waistCircumference", record.getWaistCircumference());
-            recordMap.put("hipCircumference", record.getHipCircumference());
-            recordMap.put("chestCircumference", record.getChestCircumference());
-            recordMap.put("thighCircumference", record.getThighCircumference());
-            recordMap.put("note", record.getNote());
-            recordMap.put("date", DateTimeUtils.toEpochSeconds(record.getDate()));
-            recordMap.put("createdAt", DateTimeUtils.toEpochSeconds(record.getCreatedAt()));
-            recordMap.put("updatedAt", DateTimeUtils.toEpochSeconds(record.getUpdatedAt()));
-            recordMap.put("imageUrl", record.getImageUrl());
-            recordMap.put("measurementTimePeriod", record.getMeasurementTimePeriod());
-            return recordMap;
-        }).toList();
-        result.put("records", recordsData);
+        FetchAllDataResponse response = FetchAllDataResponse.builder()
+                .success(true)
+                .message("获取成功")
+                .profile(profileData)
+                .records(recordsData)
+                .totalRecords(totalRecords)
+                .currentPage(currentPage)
+                .totalPages(totalPages)
+                .pageSize(pageSize)
+                .build();
 
-        // 分页元数据
-        result.put("totalRecords", totalRecords);
-        result.put("currentPage", currentPage);
-        result.put("totalPages", totalPages);
-        result.put("pageSize", pageSize);
-
-        log.info("获取用户所有数据成功：userId={}, idType={}, 记录数={}, 分页={}/{}", 
+        log.info("获取用户所有数据成功：userId={}, idType={}, 记录数={}, 分页={}/{}",
                 userId, idType, records.size(), currentPage, totalPages);
-        
-        return result;
+
+        return response;
     }
 
 }

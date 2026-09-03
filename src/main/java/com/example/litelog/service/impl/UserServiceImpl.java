@@ -12,6 +12,7 @@ import com.example.litelog.repository.UserProfileRepository;
 import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.UserIdentifierService;
+import com.example.litelog.service.OssService;
 import com.example.litelog.service.UserService;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.litelog.util.DateTimeUtils;
@@ -24,10 +25,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,12 +38,14 @@ public class UserServiceImpl implements UserService {
     private final UserProfileRepository userProfileRepository;
     private final WeightRecordRepository weightRecordRepository;
     private final UserIdentifierService userIdentifierService;
+    private final OssService ossService;
 
-    public UserServiceImpl(UserRepository userRepository, UserProfileRepository userProfileRepository, WeightRecordRepository weightRecordRepository, UserIdentifierService userIdentifierService) {
+    public UserServiceImpl(UserRepository userRepository, UserProfileRepository userProfileRepository, WeightRecordRepository weightRecordRepository, UserIdentifierService userIdentifierService, OssService ossService) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.weightRecordRepository = weightRecordRepository;
         this.userIdentifierService = userIdentifierService;
+        this.ossService = ossService;
     }
 
     @Override
@@ -188,56 +187,31 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
-    private static final String AVATAR_STORAGE_DIR = "./uploads/avatars";
-    private static final String AVATAR_URL_PREFIX = "/uploads/avatars/";
-
     @Override
     @Transactional
     public String uploadAvatar(String userId, String idType, byte[] imageData, String originalFilename) {
         try {
             User user = getUserByIdentifier(userId, idType);
 
-            Path storageDir = Paths.get(AVATAR_STORAGE_DIR);
-            if (!Files.exists(storageDir)) {
-                Files.createDirectories(storageDir);
-            }
-
-            // 使用UUID命名避免文件名冲突
             String extension = FileUtils.getExtensionFromFilename(originalFilename);
-            String newFilename = UUID.randomUUID().toString() + extension;
-            Path newFilePath = storageDir.resolve(newFilename);
+            String objectKey = "avatars/" + UUID.randomUUID().toString() + extension;
+            String contentType = FileUtils.getContentTypeFromExtension(extension);
 
-            // 删除旧头像文件
-            deleteOldAvatar(user.getAvatarUrl());
+            // 删除旧头像
+            ossService.deleteFile(user.getAvatarUrl());
 
-            Files.write(newFilePath, imageData);
+            // 上传到 OSS
+            String avatarUrl = ossService.uploadFile(objectKey, imageData, contentType);
 
-            String avatarUrl = AVATAR_URL_PREFIX + newFilename;
             user.setAvatarUrl(avatarUrl);
             userRepository.save(user);
 
-            log.info("头像上传成功：userId={}, idType={}, 文件={}", userId, idType, newFilename);
+            log.info("头像上传成功：userId={}, idType={}, objectKey={}", userId, idType, objectKey);
             return avatarUrl;
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("头像上传失败：userId={}, idType={}, error={}", userId, idType, e.getMessage());
             throw new BusinessException("头像上传失败");
-        }
-    }
-
-    private void deleteOldAvatar(String avatarUrl) {
-        if (avatarUrl == null || avatarUrl.isEmpty()) {
-            return;
-        }
-        try {
-            String fileName = avatarUrl.substring(avatarUrl.lastIndexOf("/") + 1);
-            Path filePath = Paths.get(AVATAR_STORAGE_DIR).resolve(fileName);
-            if (Files.exists(filePath)) {
-                Files.delete(filePath);
-                log.info("旧头像已删除：{}", filePath);
-            }
-        } catch (Exception e) {
-            log.warn("删除旧头像失败：{}", e.getMessage());
         }
     }
 

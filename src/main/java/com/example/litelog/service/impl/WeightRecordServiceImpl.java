@@ -6,22 +6,18 @@ import com.example.litelog.dto.response.WeightRecordSyncResponse;
 import com.example.litelog.entity.WeightRecord;
 import com.example.litelog.exception.BusinessException;
 import com.example.litelog.repository.WeightRecordRepository;
+import com.example.litelog.service.OssService;
 import com.example.litelog.service.UserIdentifierService;
 import com.example.litelog.service.WeightRecordService;
 import com.example.litelog.util.DateTimeUtils;
 import com.example.litelog.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,17 +33,13 @@ public class WeightRecordServiceImpl implements WeightRecordService {
 
     private final WeightRecordRepository weightRecordRepository;
     private final UserIdentifierService userIdentifierService;
+    private final OssService ossService;
 
-    public WeightRecordServiceImpl(WeightRecordRepository weightRecordRepository, UserIdentifierService userIdentifierService) {
+    public WeightRecordServiceImpl(WeightRecordRepository weightRecordRepository, UserIdentifierService userIdentifierService, OssService ossService) {
         this.weightRecordRepository = weightRecordRepository;
         this.userIdentifierService = userIdentifierService;
+        this.ossService = ossService;
     }
-
-    @Value("${record.image.upload.path:./uploads/records}")
-    private String imageUploadPath;
-
-    @Value("${record.image.base.url:http://localhost:8080/api/record-images}")
-    private String imageBaseUrl;
 
     private Long getUserId(String userId, String idType) {
         return userIdentifierService.getOrCreateUserId(userId, idType);
@@ -175,7 +167,6 @@ public class WeightRecordServiceImpl implements WeightRecordService {
     @Transactional
     public WeightRecordSyncResponse syncRecordsWithImages(String userId, String idType, WeightRecordSyncRequest request, List<MultipartFile> files) {
         Long userIdValue = getUserId(userId, idType);
-        ensureUploadDirectoryExists();
         Map<String, MultipartFile> fileMap = buildFileMap(files);
         List<String> syncedRecordIds = new ArrayList<>();
         List<WeightRecordSyncResponse.SyncedRecord> syncedRecords = new ArrayList<>();
@@ -253,19 +244,7 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         return existingRecord.getImageUrl();
     }
 
-    private void ensureUploadDirectoryExists() {
-        Path uploadDir = Paths.get(imageUploadPath);
-        if (!Files.exists(uploadDir)) {
-            try {
-                Files.createDirectories(uploadDir);
-                log.info("创建记录图片上传目录：{}", uploadDir.toAbsolutePath());
-            } catch (IOException e) {
-                throw new BusinessException("创建上传目录失败");
-            }
-        }
-    }
-
-    private Map<String, MultipartFile> buildFileMap(List<MultipartFile> files) {
+private Map<String, MultipartFile> buildFileMap(List<MultipartFile> files) {
         Map<String, MultipartFile> fileMap = new HashMap<>();
         if (files != null && !files.isEmpty()) {
             for (MultipartFile file : files) {
@@ -288,32 +267,14 @@ public class WeightRecordServiceImpl implements WeightRecordService {
         }
 
         String extension = FileUtils.getExtensionFromContentType(contentType);
-        String fileName = recordId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + extension;
-        Path filePath = Paths.get(imageUploadPath).resolve(fileName);
+        String objectKey = "records/" + recordId + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + extension;
+        String imageUrl = ossService.uploadFile(objectKey, file.getInputStream(), contentType, file.getSize());
 
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        String imageUrl = imageBaseUrl + "/" + fileName;
-        log.info("记录图片保存成功：{}", imageUrl);
-
+        log.info("记录图片上传OSS成功：{}", imageUrl);
         return imageUrl;
     }
 
     private void deleteRecordImage(String imageUrl) {
-        if (imageUrl == null || imageUrl.isEmpty()) {
-            return;
-        }
-
-        try {
-            String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
-            Path filePath = Paths.get(imageUploadPath).resolve(fileName);
-
-            if (Files.exists(filePath)) {
-                Files.delete(filePath);
-                log.info("记录图片已删除：{}", filePath);
-            }
-        } catch (Exception e) {
-            log.warn("删除记录图片失败：{}", e.getMessage());
-        }
+        ossService.deleteFile(imageUrl);
     }
 }

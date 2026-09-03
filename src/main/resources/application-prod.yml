@@ -26,18 +26,6 @@ spring:
           lob:
             non_contextual_creation: true
 
-avatar:
-  upload:
-    path: ./uploads/avatars
-  base:
-    url: https://litelog.com.cn/api/avatars
-
-record:
-  image:
-    upload:
-      path: ./uploads/records
-    base:
-      url: https://litelog.com.cn/api/record-images
 
 logging:
   level:

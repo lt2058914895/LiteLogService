@@ -83,6 +83,8 @@ jobs:
           
           # Inject database password from GitHub Secrets
           export DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
+          export ALIBABA_ACCESS_KEY='${{ secrets.ALIBABA_ACCESS_KEY }}'
+          export ALIBABA_SECRET_KEY='${{ secrets.ALIBABA_SECRET_KEY }}'
           
           # Start service
           echo "Starting service..."

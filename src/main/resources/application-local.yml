@@ -1,12 +1,6 @@
 server:
   port: 8080
 
-record:
-  image:
-    upload:
-      path: ./uploads/records
-    base:
-      url: http://10.226.220.119:8080/api/record-images
 
 spring:
   datasource:

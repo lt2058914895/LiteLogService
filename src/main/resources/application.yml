@@ -16,15 +16,9 @@ logging:
     com.example.litelog: INFO
     org.springframework.security: INFO
 
-avatar:
-  upload:
-    path: ./uploads/avatars
-  base:
-    url: http://10.226.12.52:8080/api/avatars
-
-record:
-  image:
-    upload:
-      path: ./uploads/records
-    base:
-      url: http://10.226.12.52:8080/api/record-images
+oss:
+  endpoint: oss-cn-shanghai.aliyuncs.com
+  bucket: litelog-assets
+  access-key-id: ${ALIBABA_ACCESS_KEY}
+  access-key-secret: ${ALIBABA_SECRET_KEY}
+  url-prefix: https://litelog-assets.oss-cn-shanghai.aliyuncs.com

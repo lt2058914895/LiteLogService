@@ -52,4 +52,21 @@ public final class FileUtils {
         }
         return VALID_IMAGE_EXTENSIONS.contains(extension.toLowerCase());
     }
+
+    /**
+     * 从文件扩展名获取 Content-Type
+     * 例如: ".jpg" -> "image/jpeg", ".png" -> "image/png"
+     */
+    public static String getContentTypeFromExtension(String extension) {
+        if (extension == null) {
+            return "image/jpeg";
+        }
+        return switch (extension.toLowerCase()) {
+            case ".jpg", ".jpeg" -> "image/jpeg";
+            case ".png" -> "image/png";
+            case ".gif" -> "image/gif";
+            case ".webp" -> "image/webp";
+            default -> "image/jpeg";
+        };
+    }
 }

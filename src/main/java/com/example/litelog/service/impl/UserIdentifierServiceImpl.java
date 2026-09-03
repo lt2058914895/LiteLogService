@@ -3,7 +3,7 @@ package com.example.litelog.service.impl;
 import com.example.litelog.entity.User;
 import com.example.litelog.repository.UserRepository;
 import com.example.litelog.service.UserIdentifierService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;

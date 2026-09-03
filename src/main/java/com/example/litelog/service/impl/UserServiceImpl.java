@@ -13,7 +13,7 @@ import com.example.litelog.repository.UserRepository;
 import com.example.litelog.repository.WeightRecordRepository;
 import com.example.litelog.service.UserIdentifierService;
 import com.example.litelog.service.UserService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import com.example.litelog.util.DateTimeUtils;
 import com.example.litelog.util.FileUtils;
 import org.slf4j.Logger;

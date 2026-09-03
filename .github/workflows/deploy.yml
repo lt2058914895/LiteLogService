@@ -81,6 +81,9 @@ jobs:
           # Clear old log file
           > "$LOG_FILE"
           
+          # Inject database password from GitHub Secrets
+          export DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
+          
           # Start service
           echo "Starting service..."
           nohup java -jar "$JAR_FILE" \

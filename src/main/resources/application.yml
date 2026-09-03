@@ -22,3 +22,12 @@ oss:
   access-key-id: ${ALIBABA_ACCESS_KEY}
   access-key-secret: ${ALIBABA_SECRET_KEY}
   url-prefix: https://litelog-assets.oss-cn-shanghai.aliyuncs.com
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
